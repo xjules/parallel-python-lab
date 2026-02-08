@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "parallel-python-lab-workshop"
 version = "0.1.0"
@@ -14,12 +18,7 @@ dependencies = [
   "numpy>=1.26",
 ]
 
-# ---------------------------------------------------------------------------
-# Dependency groups (uv install --group ...)
-# ---------------------------------------------------------------------------
-
 [dependency-groups]
-
 cli = [
   "rich>=13.7",
   "tqdm>=4.66",
@@ -36,6 +35,8 @@ opencl = [
 
 viz = [
   "matplotlib>=3.8",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
 ]
 
 dev = [
@@ -52,6 +53,8 @@ all = [
   "numba>=0.59",
   "pyopencl>=2024.3",
   "matplotlib>=3.8",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
 ]
 
 [tool.ruff]
@@ -61,3 +64,12 @@ target-version = "py312"
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+utils = ["static/*.html"]
