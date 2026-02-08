@@ -14,11 +14,9 @@ class Stage:
         while True:
             order = await self.in_q.get()
             if order is None:
-                # we are done if no more orders
-                # signaling with None
                 await self.out_q.put(None)
                 return
-
+            print(f"{self.name} working on {order=}")
             await asyncio.sleep(self.seconds + random.random() * self.seconds)
             order[self.name] = "ok"
             await self.out_q.put(order)
@@ -27,15 +25,15 @@ class Stage:
 class Producer:
     def __init__(self, out_q, n_orders=10):
         self.out_q = out_q
-        self.menu = ["hotdog", "hamburger", "ice-cream"]
+        self.menu = ["🌭 hotdog", "🍔 burger", "🍦 ice-cream"]
         self.n_orders = n_orders
 
     async def run(self):
         for i in range(self.n_orders):
-            await self.out_q.put(
-                {"id": i, "item": random.choice(self.menu), "start": time.time()}
-            )
-            await asyncio.sleep(0.3)
+            order = {"id": i, "item": random.choice(self.menu), "start": time.time()}
+            print(f"new f{order=}")
+            await self.out_q.put(order)
+            await asyncio.sleep(random.random() * 4)
         await self.out_q.put(None)
 
 
@@ -60,9 +58,9 @@ async def main():
 
     producer = Producer(q_order)
 
-    ingredients = Stage("ingredients", q_order, q_ing, 0.8)
-    cook = Stage("cook", q_ing, q_cook, 1.2)
-    prepare = Stage("prepare", q_cook, q_prep, 0.6)
+    ingredients = Stage("ingredients", q_order, q_ing, 3)
+    cook = Stage("cook", q_ing, q_cook, 4)
+    prepare = Stage("prepare", q_cook, q_prep, 3)
 
     customer = Customer(q_prep)
 
