@@ -4,11 +4,12 @@ import time
 
 
 class Stage:
-    def __init__(self, name, in_q, out_q, seconds):
+    def __init__(self, name, in_q, out_q, seconds, id_worker=None):
         self.name = name
         self.in_q = in_q
         self.out_q = out_q
         self.seconds = seconds
+        self.id_worker = id_worker
 
     async def run(self):
         while True:
@@ -16,7 +17,7 @@ class Stage:
             if order is None:
                 await self.out_q.put(None)
                 return
-            print(f"{self.name} working on {order=}")
+            print(f"{self.name} worker {self.id_worker} working on {order=}")
             await asyncio.sleep(self.seconds + random.random() * self.seconds)
             order[self.name] = "ok"
             await self.out_q.put(order)
@@ -62,10 +63,15 @@ async def main():
     producer = Producer(q_order)
 
     ingredients_workers = [
-        Stage("ingredients", q_order, q_ing, 3) for _ in range(N_workers)
+        Stage("ingredients", q_order, q_ing, 3, id_worker=wid)
+        for wid in range(N_workers)
     ]
-    cook_workers = [Stage("cook", q_ing, q_cook, 3) for _ in range(N_workers)]
-    prep_workers = [Stage("prepare", q_cook, q_prep, 3) for _ in range(N_workers)]
+    cook_workers = [
+        Stage("cook", q_ing, q_cook, 3, id_worker=wid) for wid in range(N_workers)
+    ]
+    prep_workers = [
+        Stage("prepare", q_cook, q_prep, 3, id_worker=wid) for wid in range(N_workers)
+    ]
 
     customer = Customer(q_prep)
 

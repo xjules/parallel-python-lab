@@ -28,18 +28,20 @@ def customer(order):
     print(f"🎉 served #{order['id']} in {dt:.2f}s")
 
 
-def main():
+def producer(order_id):
     menu = ["🌭 hotdog", "🍔 burger", "🍦 ice-cream"]
+    order = {
+        "id": order_id,
+        "item": random.choice(menu),
+        "start": time.time(),
+    }
+    time.sleep(1)
+    print(f"\n📝 new order #{i}: {order['item']}")
 
+
+def main():
     for i in range(5):
-        order = {
-            "id": i,
-            "item": random.choice(menu),
-            "start": time.time(),
-        }
-
-        print(f"\n📝 new order #{i}: {order['item']}")
-
+        order = producer(i)
         order = ingredients(order)
         order = cook(order)
         order = prepare(order)
