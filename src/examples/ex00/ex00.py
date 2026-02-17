@@ -48,5 +48,29 @@ def main():
         customer(order)
 
 
+# do async await vs gather
+# -- do parameters,  except asyncio.CancelledError:
+# exception handling in async tasks, cancellation, timeouts, TaskGroups
+# do async wait vs creat_task
+# do async TaskGroup (Python 3.11+)
+# do async synchronization primitives (locks, events, queues, futures)
+# free threaded python https://astral.sh/blog/python-3.14
+# check this - do full CPU parallelism with multiple interpreters (no GIL) https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.InterpreterPoolExecutor
+# from concurrent.futures import InterpreterPoolExecutor
+
+# def process_data(data):
+#     # Each interpreter has its own isolated memory and state
+#     return sum(data) / len(data)
+
+# with InterpreterPoolExecutor(max_workers=4) as executor:
+#     results = list(executor.map(process_data, [range(1000), range(2000)]))
+# independent interpreters, no GIL, true parallelism for CPU-bound tasks
+
+# do asyncio.to_thread (sync2async)
+# diagram event loop, tasks, threads
+# import sys
+# Returns True if the GIL is active, False if running in free-threaded mode
+# print(sys._is_gil_enabled())
+
 if __name__ == "__main__":
     main()
