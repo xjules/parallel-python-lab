@@ -66,6 +66,8 @@ def main():
 #     results = list(executor.map(process_data, [range(1000), range(2000)]))
 # independent interpreters, no GIL, true parallelism for CPU-bound tasks
 
+# subinterpreters (Python 3.13+) https://docs.python.org/3/library/subinterpreter.html
+
 # do asyncio.to_thread (sync2async)
 # diagram event loop, tasks, threads
 # import sys
