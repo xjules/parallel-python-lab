@@ -1,6 +1,5 @@
 ---
 marp: true
-title: "Synchronous Programming"
 paginate: true
 size: 16:9
 theme: dracula
