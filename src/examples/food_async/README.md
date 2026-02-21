@@ -4,7 +4,7 @@ Multiple orders can be in the same stage at once.
 
 # Task: Make graceful exit
 
-**Goal:** We don't want to Ctrl+C
+**Goal:** We don't want Ctrl+C
 
 ### What to do
 
@@ -13,7 +13,7 @@ Make sure each task will exit
 
 # Task: Introduce create_task 
 
-**Goal:** You want background daemons, cancellation control or dynamic spawning
+**Goal:** We want background task, cancellation control and dynamic spawning
 
 ### What to do
 

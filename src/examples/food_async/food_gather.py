@@ -75,6 +75,7 @@ async def main():
 
     customer = Customer(q_prep)
 
+    # exercise
     await asyncio.gather(
         producer.run(),
         producer.run(),

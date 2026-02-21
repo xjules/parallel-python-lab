@@ -84,7 +84,17 @@ async def seismic_file_access():
     finally:
         print("Closing file...")
 ```
-
+---
+# TaskGroup
+- async context manager that provides structured concurrency
+- safer alternative to `asyncio.gather()`
+    - if one task fails **all other tasks** are automatically cancelled
+```python
+    async with asyncio.TaskGroup() as tg:
+        t1 = tg.create_task(cook.run())
+        t2 = tg.create_task(consumer.run())
+    # at this point t1 and t2 are finished!
+```
 ---
 
 # Async Iterators
