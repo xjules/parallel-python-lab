@@ -11,6 +11,15 @@ Multiple orders can be in the same stage at once.
 Make sure each task will exit
 
 
+# Task: Introduce exception
+
+**Goal:** How to handle exception
+
+### What to do
+
+Introduce and handle it. You can use gather(...) to decide either to raise or return
+
+
 # Task: Introduce create_task 
 
 **Goal:** We want background task, cancellation control and dynamic spawning

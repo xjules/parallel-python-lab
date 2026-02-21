@@ -4,7 +4,7 @@ import time
 
 
 class Stage:
-    def __init__(self, name, in_q, out_q, seconds, worker_id=None):
+    def __init__(self, name, in_q, out_q, seconds, worker_id):
         self.name = name
         self.in_q = in_q
         self.out_q = out_q
@@ -14,10 +14,10 @@ class Stage:
     async def run(self):
         while True:
             order = await self.in_q.get()
+            print(f"{self.name}[{self.worker_id}] working on order {order['id']}")
             if order is None:
                 await self.out_q.put(None)
                 return
-            print(f"{self.name} worker {self.worker_id} working on {order=}")
             await asyncio.sleep(self.seconds + random.random() * self.seconds)
             order[self.name] = "ok"
             await self.out_q.put(order)
@@ -32,7 +32,7 @@ class Producer:
     async def run(self):
         for i in range(self.n_orders):
             order = {"id": i, "item": random.choice(self.menu), "start": time.time()}
-            print(f"new f{order=}")
+            print(f"new {order=}")
             await self.out_q.put(order)
             await asyncio.sleep(random.random() * 4)
         await self.out_q.put(None)

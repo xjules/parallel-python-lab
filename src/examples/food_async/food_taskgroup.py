@@ -4,43 +4,47 @@ import time
 
 
 class Stage:
-    def __init__(self, name, in_q, out_q, seconds, fail_prob=0.0):
+    def __init__(self, name, in_q, out_q, seconds, worker_id, fail_prob=0.0):
         self.name = name
         self.in_q = in_q
         self.out_q = out_q
         self.seconds = seconds
+        self.worker_id = worker_id
         self.fail_prob = fail_prob
 
-    async def run(self, wid: int):
+    async def run(self):
         try:
             while True:
                 order = await self.in_q.get()
-                print(f"{self.name}[{wid}] working on order {order['id']}")
+                print(f"{self.name}[{self.worker_id}] working on order {order['id']}")
                 await asyncio.sleep(self.seconds)
 
                 # Inject a failure in cook
                 if self.fail_prob and random.random() < self.fail_prob:
                     raise RuntimeError(
-                        f"{self.name}[{wid}] burned order {order['id']} 🔥"
+                        f"{self.name}[{self.worker_id}] burned order {order['id']} 🔥"
                     )
 
                 order[self.name] = "ok"
                 await self.out_q.put(order)
 
         except asyncio.CancelledError:
-            print(f"🛑 {self.name}[{wid}] cancelled (shutdown cascade)")
+            print(f"🛑 {self.name}[{self.worker_id}] cancelled (shutdown cascade)")
             raise
 
 
 class Producer:
-    def __init__(self, out_q, n_orders=50):
+    def __init__(self, out_q, n_orders=10):
         self.out_q = out_q
+        self.menu = ["🌭 hotdog", "🍔 burger", "🍦 ice-cream"]
         self.n_orders = n_orders
 
     async def run(self):
         for i in range(self.n_orders):
-            await self.out_q.put({"id": i, "start": time.time()})
-            await asyncio.sleep(0.2)
+            order = {"id": i, "item": random.choice(self.menu), "start": time.time()}
+            print(f"new {order=}")
+            await self.out_q.put(order)
+            await asyncio.sleep(random.random() * 4)
 
 
 class Customer:
@@ -52,10 +56,13 @@ class Customer:
             while True:
                 order = await self.in_q.get()
                 dt = time.time() - order["start"]
-                print(f"✅ served order {order['id']} in {dt:.2f}s")
+                print(f"✅ order {order['id']} took {dt:.2f}s")
         except asyncio.CancelledError:
             print("🛑 customer cancelled (shutdown cascade)")
             raise
+
+
+N_workers = 3
 
 
 async def main():
@@ -66,28 +73,32 @@ async def main():
 
     producer = Producer(q_order)
 
-    ing = Stage("ingredients", q_order, q_ing, seconds=0.6)
-    cook = Stage(
-        "cook", q_ing, q_cook, seconds=1.0, fail_prob=0.12
-    )  # <-- failure injected
-    prep = Stage("prepare", q_cook, q_prep, seconds=0.5)
+    ingredients_workers = [
+        Stage("ingredients", q_order, q_ing, 3, worker_id=wid)
+        for wid in range(N_workers)
+    ]
+    cook_workers = [
+        Stage("cook", q_ing, q_cook, 3, worker_id=wid, fail_prob=0.12)
+        for wid in range(N_workers)
+    ]
+    prep_workers = [
+        Stage("prepare", q_cook, q_prep, 3, worker_id=wid) for wid in range(N_workers)
+    ]
+
     customer = Customer(q_prep)
 
     try:
         async with asyncio.TaskGroup() as tg:
             tg.create_task(producer.run())
-
-            for i in range(2):
-                tg.create_task(ing.run(i))
-            for i in range(2):
-                tg.create_task(cook.run(i))
-            for i in range(2):
-                tg.create_task(prep.run(i))
-
+            for w in ingredients_workers:
+                tg.create_task(w.run())
+            for w in cook_workers:
+                tg.create_task(w.run())
+            for w in prep_workers:
+                tg.create_task(w.run())
             tg.create_task(customer.run())
 
     except* RuntimeError as eg:
-        # ExceptionGroup handling (Python 3.11+)
         print("\n💥 TaskGroup failed. Exceptions collected:")
         for e in eg.exceptions:
             print("  -", e)
