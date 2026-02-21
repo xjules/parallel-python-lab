@@ -19,10 +19,12 @@ theme: dracula
 # Example
 
 ```python
-print("Start")
-cook()
-serve()
-print("Done")
+    for i in range(5):
+        order = producer(i)
+        order = ingredients(order)
+        order = cook(order)
+        order = prepare(order)
+        customer(order)
 ```
 
 Nothing else happens while `cook()` runs.
