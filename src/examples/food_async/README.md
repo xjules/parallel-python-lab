@@ -1,7 +1,5 @@
 # Exercise: Async Food-Truck Factory with multiple workers
 
-Multiple orders can be in the same stage at once.
-
 # Task: Make graceful exit
 
 **Goal:** We don't want Ctrl+C

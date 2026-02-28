@@ -19,7 +19,7 @@ theme: dracula
 
 ```python
     for i in range(5):
-        order = producer(i)
+        order = producer()
         order = ingredients(order)
         order = cook(order)
         order = prepare(order)
@@ -27,6 +27,16 @@ theme: dracula
 ```
 
 Nothing else happens while `cook()` runs.
+
+---
+# I/O bound
+
+
+---
+# CPU bound
+
+---
+# Global interpreter lock
 
 ---
 

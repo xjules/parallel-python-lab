@@ -64,13 +64,17 @@ async def main():
 
     customer = Customer(q_prep)
 
-    await asyncio.gather(
-        producer.run(),
-        ingredients.run(),
-        cook.run(),
-        prepare.run(),
-        customer.run(),
-    )
+    task_prod = asyncio.create_task(producer.run())
+    task_ing = asyncio.create_task(ingredients.run())
+    task_cook = asyncio.create_task(cook.run())
+    task_prep = asyncio.create_task(prepare.run())
+    task_cust = asyncio.create_task(customer.run())
+
+    await task_prod
+    await task_ing
+    await task_cook
+    await task_prep
+    await task_cust
 
 
 if __name__ == "__main__":

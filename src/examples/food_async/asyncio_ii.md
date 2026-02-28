@@ -6,14 +6,17 @@ paginate: true
 size: 16:9
 ---
 # Tasks
+- Represents the actual **concurrency**
 - Submits a coroutine to the event loop in the background
-  - Scheduled immediately
+  - Scheduled and starts immediately
   - Runs concurrently
 ``` python
 cook = Cook()
 consumer = Consumer():
 task1 = asyncio.create_task(cook.run())
 task2 = asyncio.create_task(consumer.run())
+await task1
+await task2
 ```
 
 ---
@@ -22,14 +25,15 @@ task2 = asyncio.create_task(consumer.run())
 ```python
 tasks = [asyncio.create_task(Cook(i).run()) for i in range(10)]
 ```
-- raise exception by gather
+   - raise exception by gather
+
 ```python
 results = await asyncio.gather(*tasks, return_exceptions=False)
 ```
-- return exception by gather
-```python
-results = await asyncio.gather(*tasks, return_exceptions=True)
-```
+    - return exception by gather
+    ```python
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    ```
 ---
 
 # Futures - tasks
