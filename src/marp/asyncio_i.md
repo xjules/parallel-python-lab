@@ -29,6 +29,58 @@ async def run():
 - `await` can **only** be used inside a coroutine, `async def`
 
 ---
+# Tasks - yep!
+- Represents the actual **concurrency**
+- Submits a coroutine to the event loop in the background
+  - Scheduled and starts immediately
+  - Runs concurrently
+``` python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+
+sleep2 = asyncio.create_task(my_job(2))
+sleep3 = asyncio.create_task(my_job(3))
+await sleep2
+await sleep3
+```
+---
+# Tasks - results
+- awaiting tasks delivers results!
+``` python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+    return f"Sleeping for {sleep_time} seconds"
+
+sleep2 = asyncio.create_task(my_job(2))
+sleep3 = asyncio.create_task(my_job(3))
+result2 = await sleep2
+result3 = await sleep3
+```
+---
+# Tasks - mix
+- how long this takes?
+``` python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+
+sleep2 = asyncio.create_task(my_job(2))
+sleep3 = asyncio.create_task(my_job(3))
+await my_job(2)
+await sleep2
+await sleep3
+```
+---
+<div class="mermaid">
+gantt
+    title Task Execution
+    dateFormat s
+    axisFormat %Ss
+    section Tasks
+    create_task(my_job(2))  :a, 0, 2s
+    create_task(my_job(3))  :b, 0, 3s
+</div>
+
+---
 # `asyncio.gather`
 - runs and await multiple coroutines
 - Results are in the same same order as the inputs
