@@ -69,16 +69,144 @@ await my_job(2)
 await sleep2
 await sleep3
 ```
+[Execution](./execution_ex.md)
+
 ---
-<div class="mermaid">
-gantt
-    title Task Execution
-    dateFormat s
-    axisFormat %Ss
-    section Tasks
-    create_task(my_job(2))  :a, 0, 2s
-    create_task(my_job(3))  :b, 0, 3s
-</div>
+# Tasks - cancellation
+- very straightforward!
+```python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+
+sleep_job = asyncio.create_task(my_job(100))
+await asyncio.sleep(1)
+sleep_job.cancel()
+#...
+await sleep_job
+
+```
+---
+# Tasks - cancellation
+```python
+sleep_job.cancel()
+#...
+await sleep_job
+
+```
+```
+asyncio/tasks.py", line 718, in sleep_job
+    return await future
+           ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+```
+---
+# Tasks - cancellation
+```python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+
+sleep_job = asyncio.create_task(my_job(100))
+await asyncio.sleep(1)
+sleep_job.cancel()
+#...
+try:
+    await sleep_job
+except asyncio.CancellationError
+  ...
+```
+
+---
+# Task - timeout cancellation
+```python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+
+sleep_task = asyncio.create_task(my_job(100))
+try:
+    await asyncio.wait_for(sleep_task, timeout=1)
+except asyncio.exceptions.TimeoutError:
+    print(f"Task {sleep_task.cancelled()=}")
+```
+---
+# Task - shield
+```python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+
+sleep_task = asyncio.create_task(my_job(10))
+try:
+    await asyncio.wait_for(asyncio.shield(sleep_task), timeout=1)
+except asyncio.exceptions.TimeoutError:
+    print(f"Task {sleep_task.cancelled()=}")
+await sleep_task
+```
+---
+# Awaitables
+
+```
+          Awaitable  (anything you can "await")
+           ┌──────────────┴──────────────┐
+       Coroutine                      Future
+    (async def fn)            (placeholder for a result;
+     yields control            set_result / set_exception)
+                                     │
+                                   Task
+                            (Future + scheduled Coroutine;
+                             created via create_task())
+```
+- **Future** — low-level box: _pending → result/exception_
+- **Task** — a `Future` that wraps & drives a coroutine on the event loop
+
+---
+# Future
+- Placeholder for a result
+  - promise of a value
+- Lower-level primitives
+```python
+async def my_job(sleep_time, future):
+    await asyncio.sleep(sleep_time)
+    future.set_result(sleep_time)
+    await asyncio.sleep(1.0)
+
+future = asyncio.Future()
+sleep_task = asyncio.create_task(my_job(10, future))
+value = await future # assert value==10
+await sleep_task
+```
+---
+# CPU bound code
+- code might execute sequentially
+```python
+async def cpu_bound_job(n):
+    count = 0
+    for i in range(n):
+        count += i
+    return count
+
+    task_sum_1 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
+    task_sum_2 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
+    result1 = await task_sum_1
+    result2 = await task_sum_2
+    print(f"Results: {result1=} {result2=}")
+```
+---
+# CPU bound code
+- parallelization might help
+```python
+async def cpu_bound_job(n):
+    count = 0
+    for i in range(n):
+        count += i
+    return count
+
+    task_sum_1 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
+    task_sum_2 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
+    task_sleep = asyncio.create_task(asyncio.sleep(2)) #2secs
+    result1 = await task_sum_1
+    result2 = await task_sum_2
+    await task_sleep
+    print(f"Results: {result1=} {result2=}")
+```
 
 ---
 # `asyncio.gather`
@@ -127,11 +255,37 @@ results = await asyncio.gather(Cook().run(), Consumer.run()):
     3. Handles cleanup and closes the loop automatically
 
 ``` python
-class Cook:
-    async def run():
-        my_loop = asyncio.get_running_loop()
-        await make_fries()
-asyncio.run(Cook.run())
+async def main_task():
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+
+    sleep2 = asyncio.create_task(my_job(2))
+asyncio.run(main_task(), debug=True)
+```
+---
+# Event loop - direct access
+``` python
+async def main_task():
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+
+    loop = asyncio.get_running_loop()
+    loop.call_soon(my_job)
+asyncio.run(main_task())
+```
+---
+# Event loop - signal handlers
+``` python
+async def main_task():
+    def cancel_tasks():
+        tasks = asyncio.all_tasks()
+        [task.cancel() for task in tasks]
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGINT, cancel_tasks)
+asyncio.run(main_task())
 ```
 ---
 
