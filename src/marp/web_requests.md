@@ -20,7 +20,7 @@ size: 16:9
 ---
 
 ### High-Level Servers: `asyncio.start_server`
-* **Beyond Sockets**: Instead of managing low-level socket objects, `asyncio` provides a high-level server API [6].
+- Instead of managing low-level socket objects, `asyncio` provides a high-level server API.
 * **The Connection Callback**: You provide a coroutine that is triggered whenever a client connects [7].
 * **Streams**: You interact with clients using a `StreamReader` (to read data) and a `StreamWriter` (to send data) [7, 8].
     * *Foodtruck Context*: Imagine your truck now has a "digital window" where `nc localhost 8000` sends an order directly into your pipeline [9, 10].
