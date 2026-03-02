@@ -18,5 +18,5 @@ size: 16:9
   - CPU bound op
   - IO bound op
   - IO bound libraries
-- parallel python - multiprocessing / no GIL (13:30-14:45)
+- parallel python - no GIL (13:30-14:45)
 - parallel python - opencl (15:00-16:30)
