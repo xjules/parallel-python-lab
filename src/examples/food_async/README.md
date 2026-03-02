@@ -17,6 +17,14 @@ Make sure each task will exit
 
 Introduce and handle it. You can use gather(...) to decide either to raise or return
 
+# Task introduce PriorityQueue
+
+**Goal:** asyncio.Queue vs asyncio.PriorityQueue
+
+### What to do
+
+Some items might have a higher priority to cook for instance
+
 
 # Task: Introduce create_task 
 
