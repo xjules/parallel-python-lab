@@ -25,6 +25,14 @@ Introduce and handle it. You can use gather(...) to decide either to raise or re
 
 Some items might have a higher priority to cook for instance
 
+# Task introduce TopicQueue
+
+**Goal:** asyncio.Queue with subscribers on topics
+
+### What to do
+
+Implement centralized broker
+
 
 # Task: Introduce create_task 
 
