@@ -1,22 +1,19 @@
----
-marp: true
-theme: dracula
-class: invert
-paginate: true
-size: 16:9
----
-
-- Intro (08.00-9.15):
-    - Foodtruck example
-    - Synchronous execution
-    - Asynchronous vs. parallel execution
-    - GIL
+# Workshop Agenda
+- Foundations (08.00-9.15):
+    - synchronous execution
+    - asynchronous vs. parallel execution
+    - the Global Interpreter Lock (GIL)
 - asyncio - I. (9:30-11:30)
-  - lectures + exercises
+  - fundamentals
+  - coroutines, awaitables
+  - scheduling
 - lunch (11:30-12:00)
 - asyncio - II. (12:00-13:15)
-  - CPU bound op
-  - IO bound op
-  - IO bound libraries
-- parallel python - no GIL (13:30-14:45)
-- parallel python - opencl (15:00-16:30)
+  - async in IO bound problems
+- parallel python - I. (13:30-14:50)
+  - free threaded python (no GIL)
+  - across cores, loops and threads
+- parallel python - II. (15:00-16:30)
+  - architecture
+  - opencl
+  - Python ↔ GPU interaction
