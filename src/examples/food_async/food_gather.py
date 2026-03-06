@@ -14,10 +14,10 @@ class Stage:
     async def run(self):
         while True:
             order = await self.in_q.get()
-            print(f"{self.name}[{self.worker_id}] working on order {order['id']}")
             if order is None:
                 await self.out_q.put(None)
                 return
+            print(f"{self.name}[{self.worker_id}] working on order {order['id']}")
             await asyncio.sleep(self.seconds + random.random() * self.seconds)
             order[self.name] = "ok"
             await self.out_q.put(order)
@@ -77,7 +77,6 @@ async def main():
 
     # exercise
     await asyncio.gather(
-        producer.run(),
         producer.run(),
         *[w.run() for w in ingredients_workers],
         *[w.run() for w in cook_workers],
