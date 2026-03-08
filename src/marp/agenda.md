@@ -1,0 +1,19 @@
+# Workshop Agenda
+- [Foundations (08.00-9.15)](foundations.md):
+    - [synchronous execution](food_sync.md)
+    - asynchronous vs. parallel execution
+    - [the Global Interpreter Lock (GIL)](gil.md)
+- [asyncio - I. (9:30-11:30)](asyncio_i.md)
+  - fundamentals
+  - coroutines, awaitables
+  - scheduling
+- lunch (11:30-12:00)
+- [asyncio - II. (12:00-13:15)](asyncio_ii.md)
+  - async in IO bound problems
+- [parallel python - I. (13:30-14:50)](free_threaded_python.md)
+  - free threaded python (no GIL)
+  - across cores, loops and threads
+- [parallel python - II. (15:00-16:30)](opencl.md)
+  - architecture
+  - opencl
+  - Python ↔ GPU interaction
