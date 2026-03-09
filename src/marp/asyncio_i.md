@@ -5,6 +5,15 @@ class: invert
 paginate: true
 size: 16:9
 ---
+# Asyncio
+
+standard python library to write concurrent code
+
+- Single-threaded
+- Cooperative multitasking
+- Tasks explicitly yield control
+
+---
 # Coroutines
 
 ``` python
@@ -23,14 +32,16 @@ async def run():
 
 ---
 # The `await`
-- The Suspension Point - used to pause the current coroutine until the awaited operation finishes
+The Suspension Point - used to pause the current coroutine until the awaited operation finishes
+
 - **Yielding Control** - when you `await`, you tell the Event Loop: 
     - _"I am waiting; go ahead and run something else in the meantime"_
 - `await` can **only** be used inside a coroutine, `async def`
 
 ---
-# Tasks - yep!
-- Represents the actual **concurrency**
+# Tasks
+Represents the actual **concurrency**
+
 - Submits a coroutine to the event loop in the background
   - Scheduled and starts immediately
   - Runs concurrently
@@ -154,14 +165,29 @@ await sleep_task
                             (Future + scheduled Coroutine;
                              created via create_task())
 ```
-- **Future** — low-level box: _pending → result/exception_
+- **Future** — low-level: _pending → result/exception_
 - **Task** — a `Future` that wraps & drives a coroutine on the event loop
+---
+# `asyncio.gather`
+runs and await multiple awaitables
+- Results are in the same same order as the inputs
+- It automatically turns coroutines into tasks
+``` python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+    return f"Sleeping for {sleep_time} seconds"
+
+future = asyncio.Future()
+sleep2 = asyncio.create_task(my_job(2))
+results = await asyncio.gather(my_job(3), sleep2, future)
+print(results)
+```
 
 ---
 # Future
-- Placeholder for a result
-  - promise of a value
-- Lower-level primitives
+Placeholder for a result
+- promise of a value
+- lower-level primitives
 ```python
 async def my_job(sleep_time, future):
     await asyncio.sleep(sleep_time)
@@ -174,8 +200,59 @@ value = await future # assert value==10
 await sleep_task
 ```
 ---
+# Future - note!
+Cannot be set twice or more!
+
+```python
+future = asyncio.Future()
+
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+    
+    future.set_result(sleep_time)
+    return f"Sleeping for {sleep_time} seconds"
+
+sleep2 = asyncio.create_task(my_job(2))
+results = await asyncio.gather(my_job(3), sleep2, future)
+```
+---
+# Gather - note!
+Cannot be set twice or more!
+
+```python
+future = asyncio.Future()
+
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+    
+    future.set_result(sleep_time)
+    return f"Sleeping for {sleep_time} seconds"
+
+sleep2 = asyncio.create_task(my_job(2))
+# let's not raise!
+results = await asyncio.gather(my_job(3), sleep2, future, return_exceptions=True)
+```
+
+---
+# Future - note!
+Cannot be set twice or more!
+
+```python
+future = asyncio.Future()
+
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+    if not future.done(): #  make sure it is not done already
+        future.set_result(sleep_time)
+    return f"Sleeping for {sleep_time} seconds"
+
+sleep2 = asyncio.create_task(my_job(2))
+results = await asyncio.gather(my_job(3), sleep2, future)
+```
+---
 # CPU bound code
-- code might execute sequentially
+code might execute sequentially
+
 ```python
 async def cpu_bound_job(n):
     count = 0
@@ -207,23 +284,6 @@ async def cpu_bound_job(n):
     await task_sleep
     print(f"Results: {result1=} {result2=}")
 ```
-
----
-# `asyncio.gather`
-- runs and await multiple coroutines
-- Results are in the same same order as the inputs
-- It automatically turns coroutines into tasks
-``` python
-class Cook:
-    async def run():
-        await cook()
-class Consumer:
-    async def run():
-        await eat()
-results = await asyncio.gather(Cook().run(), Consumer.run()):
-```
-
-
 ---
 # Event loop - central scheduler
 - The core of every `asyncio` application that manages and distributes execution
@@ -292,19 +352,17 @@ asyncio.run(main_task())
 # Event Loop - run sync tasks concurrently
 
 ``` python
-class Cook:
-    def sync_io_task_1():
-        # heavy job
-    def sync_io_task_2():
-        # heavy job
-    async def run():
-        my_loop = asyncio.get_running_loop()
-        tasks = [
-            loop.run_in_executor(None, sync_io_task_1),
-            loop.run_in_executor(None, sync_io_task_2),
-        ]
-        results = await asyncio.gather(*tasks)
 
-cook = Cook()
-asyncio.run(cook.run())
+def sync_job_1():
+    # heavy job
+def sync_job_2():
+    # heavy job
+async def run():
+    my_loop = asyncio.get_running_loop()
+    tasks = [
+        loop.run_in_executor(None, sync_io_task_1),
+        loop.run_in_executor(None, sync_io_task_2),
+    ]
+    results = await asyncio.gather(*tasks)
+asyncio.run(run())
 ```

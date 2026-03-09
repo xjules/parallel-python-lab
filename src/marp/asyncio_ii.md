@@ -5,67 +5,10 @@ class: invert
 paginate: true
 size: 16:9
 ---
-# Tasks
-- Represents the actual **concurrency**
-- Submits a coroutine to the event loop in the background
-  - Scheduled and starts immediately
-  - Runs concurrently
-``` python
-cook = Cook()
-consumer = Consumer():
-task1 = asyncio.create_task(cook.run())
-task2 = asyncio.create_task(consumer.run())
-await task1
-await task2
-```
-
----
-# Await tasks
-- direct handle on a task
-```python
-tasks = [asyncio.create_task(Cook(i).run()) for i in range(10)]
-```
-   - raise exception by gather
-
-```python
-results = await asyncio.gather(*tasks, return_exceptions=False)
-```
-    - return exception by gather
-    ```python
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    ```
----
-
-# Futures - tasks
-
-- Placeholder for a result
-  - promise of a value
-- Lower-level primitives
-- Tasks are built on Futures
-```python
-tasks = [asyncio.create_task(Cook(i).run()) for i in range(10)]
-```
-
----
-# Futures - event
-
-``` python
-class Cook:
-    async def do_sth_else(fut):
-        # do sth else
-        fut.set_result("sth else done")
-
-    async def run(self):
-        my_loop = asyncio.get_running_loop()
-        fut_event = my_loop.create_future()
-        asyncio.create_task(self.do_sth(fut_event))
-        await fut_event
-```
----
 
 # Async context manager
+asynchronous version of the with statement
 
-- asynchronous version of the with statement 
 - It uses async with to handle resources
 - await to open or close 
 - `__aenter__` and `__aexit__` 
@@ -90,20 +33,22 @@ async def seismic_file_access():
 ```
 ---
 # TaskGroup
-- async context manager that provides structured concurrency
+async context manager that provides structured concurrency
+
 - safer alternative to `asyncio.gather()`
     - if one task fails **all other tasks** are automatically cancelled
 ```python
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
     async with asyncio.TaskGroup() as tg:
-        t1 = tg.create_task(cook.run())
-        t2 = tg.create_task(consumer.run())
+        t1 = tg.create_task(my_job(2))
+        t2 = tg.create_task(my_job(5))
     # at this point t1 and t2 are finished!
 ```
 ---
-
 # Async Iterators
 
-``` python
+```python
 async def async_range(count):
     for i in range(count):
         await asyncio.sleep(0.5)
@@ -114,13 +59,14 @@ async for number in async_range(5):
 ```
 ---
 # Task coordination
-- real systems must handle
-    - thousands of jobs
-    - different processing stages
-    - limited resources
-    - tasks depending on other tasks
 
-`Async code quickly becomes chaos without structure.`
+real systems must handle
+- thousands of jobs
+- different processing stages
+- limited resources
+- tasks depending on other tasks
+
+`Async code quickly becomes chaos without structure`
 
 ---
 # Async Workload Types
@@ -187,32 +133,27 @@ async def worker(queue):
 await queue.put(job)
 job = await queue.get()
 ```
-
-
-
 ---
 # Async Pipelines
-
-- Work split into stages
-    - Ex., Download → Parse → Store
+Work split into stages
+- Ex., Download → Parse → Store
 - Each stage 
     - reads from async Queue
     - writes to async Queue
     - Queue → Workers → Queue → Workers
 
-``` python
+```python
 download_q = asyncio.Queue()
 parse_q = asyncio.Queue()
 store_q = asyncio.Queue()
 ```
 ---
 # Task Coordination
-
-- Tasks often depend on each other
-    - wait until resource is available
-    - signal when work is ready
-    - limit concurrency
-- Asyncio provides primitives for this.
+Tasks often depend on each other
+- wait until resource is available
+- signal when work is ready
+- limit concurrency
+- Asyncio provides primitives for this
 
 ---
 
@@ -229,59 +170,44 @@ store_q = asyncio.Queue()
 
 # Event
 
-- signal between tasks.
+signal between tasks.
 
 ``` python
 event = asyncio.Event() # create
 await event.wait() # wait for signal
 event.set() # fire up
 ```
-- Use cases:
-    - system initialization
-    - synchronization
-    - notifying workers
+Use cases:
+- system initialization
+- synchronization
+- notifying workers
 
 ---
 
 # Semaphore
 
-- limit number of concurrent operations.
+limit number of concurrent operations.
 
 ``` python
 sem = asyncio.Semaphore(10) # create with max 10 async workers
 async with sem: # gate
     await download(url)
 ```
-- Use cases:
-    - API rate limits
-    - database connections
-    - network throttling
+Use cases:
+- API rate limits
+- database connections
+- network throttling
 
 ---
-
 # Async Locks
 
-- protect shared resources
-    - Ex., when multiple tasks modify the same data
 ``` python
 lock = asyncio.Lock()
 
 async with lock:
     shared_counter += 1
 ```
----
-
-# Structured Concurrency
-
-- modern asyncio encourages to use `TaskGroup`
-
-``` python
-async with asyncio.TaskGroup() as tg:
-    tg.create_task(worker())
-    tg.create_task(worker())
-```
-
-- if one task fails:
-    - all tasks cancel
-    - system remains consistent
+Use cases:
+- protect shared resources
+- multiple tasks modify the same data
 

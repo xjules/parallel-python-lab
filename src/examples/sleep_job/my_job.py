@@ -2,6 +2,21 @@ import asyncio
 import time
 
 
+async def main_gather():
+    future = asyncio.Future()
+
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+
+        future.set_result(sleep_time)
+        return f"Sleeping for {sleep_time} seconds"
+
+    sleep2 = asyncio.create_task(my_job(2))
+    results = await asyncio.gather(my_job(3), sleep2)
+    # results = await asyncio.gather(my_job(3), sleep2, future, return_exceptions=True)
+    print(results)
+
+
 async def main_CPU_bound():
     async def cpu_bound_job(n):
         count = 0
@@ -98,6 +113,7 @@ if __name__ == "__main__":
     # asyncio.run(main_wait_for())
     # asyncio.run(main_wait_for_with_shield())
     # asyncio.run(main_future())
-    asyncio.run(main_CPU_bound())
+    # asyncio.run(main_CPU_bound())
+    asyncio.run(main_gather())
     end = time.time()
     print(f"Execution time: {end - start:.2f} seconds")
