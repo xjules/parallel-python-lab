@@ -3,7 +3,7 @@
 Producer → ingredients → cook → prepare → Customer
 ---
 
-## Task 1 — Add Timing Information
+## Task: Add Timing Information
 
 **Goal:** Understand where time is spent.
 
@@ -11,8 +11,8 @@ Producer → ingredients → cook → prepare → Customer
 
 Measure time spent in each stage (ingredients, cook, prepare) and
 total time per order. Print the timings when an order is completed.
-
-## Task 2 — Process Multiple Orders
+---
+## Task: Process Multiple Orders
 
 **Goal:** See how blocking affects throughput.
 
