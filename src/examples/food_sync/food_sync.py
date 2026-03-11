@@ -36,7 +36,8 @@ def producer(order_id):
         "start": time.time(),
     }
     time.sleep(1)
-    print(f"\n📝 new order #{i}: {order['item']}")
+    print(f"\n📝 new order #{order['id']}: {order['item']}")
+    return order
 
 
 def main():
