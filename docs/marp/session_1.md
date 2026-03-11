@@ -30,6 +30,24 @@ Typical python programs start with:
 The program executes **top → bottom**.
 
 ---
+![Foodtruck](fig/ft01.png)
+
+---
+![Foodtruck](fig/ft02.png)
+
+---
+![Foodtruck](fig/ft03.png)
+
+---
+![Foodtruck](fig/ft04.png)
+
+---
+![Foodtruck](fig/ft05.png)
+
+---
+![Foodtruck](fig/ft06.png)
+
+---
 
 # Foodtruck: Sequential Pipeline
 

@@ -35,7 +35,7 @@ OpenCL can execute on:
 Device structure:
 
 Device  
-→ Compute Units  
+→ Compute Units
 → Processing Elements
 
 Processing elements execute instructions using:
@@ -54,7 +54,7 @@ Important milestones:
 - 2008 — OpenCL 1.0 released
 - 2013 — OpenCL 2.0 (Shared Virtual Memory)
 - 2017 — OpenCL 2.2 (workgroup functions)
-- 2022 — OpenCL 3.0
+- 2020 — OpenCL 3.0
 
 ---
 
