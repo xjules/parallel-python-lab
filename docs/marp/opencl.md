@@ -25,21 +25,12 @@ OpenCL allows a **host application** to control multiple compute devices.
 
 # OpenCL Devices
 
-OpenCL can execute on:
+OpenCL can execute on
+- GPU, CPU, FPGA, DSP, ...
 
-- GPU
-- CPU
-- FPGA
-- DSP
-
-Device structure:
-
-Device  
-→ Compute Units
-→ Processing Elements
+Device structure composes of compute units and processing elements
 
 Processing elements execute instructions using:
-
 - SIMD
 - SPMD
 
@@ -91,41 +82,25 @@ OpenCL is commonly used for:
 
 # OpenCL Programming Model
 
-OpenCL programs consist of:
+**Setup**: Devices, Contexts, Command Queues
 
-### Setup
+**Memory**: Buffers, Images
 
-- Devices
-- Contexts
-- Command Queues
+**Execution**: Programs, Kernels
 
-### Memory
-
-- Buffers
-- Images
-
-### Execution
-
-- Programs
-- Kernels
-
-### Synchronization
-
-- Events
-- Pipes
+**Synchronization**: Events, Pipes
 
 ---
 
 # Kernels
 
-A **kernel** is a C‑like function executed on the device.
-
-Thousands of threads execute the same kernel.
-
-Example:
+A **kernel** is a C‑like function executed on the device
+- Thousands of threads execute the same kernel
+- Each work‑item processes **one element** and has its own **id**
 
 ```c
-kernel void dp_mul(global const float *a,
+// id=0,1,....n-1
+kernel void mul(global const float *a,
                    global const float *b,
                    global float *result)
 {
@@ -134,161 +109,123 @@ kernel void dp_mul(global const float *a,
 }
 ```
 
-Each work‑item processes **one element**.
 
 ---
 
-# CPU vs GPU Thinking
-
-CPU version:
+# Parallel Thinking
 
 ```c
+// sequential
+float *a;
+float *b;
+float *result;
 for(int i=0;i<n;i++)
     result[i] = a[i] * b[i];
 ```
+```c
+// parallel
+kernel void mul(global const float *a,
+                   global const float *b,
+                   global float *result) {
+    int id = get_global_id(0);
+    result[id] = a[id] * b[id];
+}
+```
+---
+# Async execution
 
-GPU version:
+Enqueuing commands in queue return Events that can be awaited
+- `.wait()`
 
-Each thread computes one element simultaneously.
+```python
+a_np = np.random.rand(50000).astype(np.float32)
+b_np = np.random.rand(50000).astype(np.float32)
+# Move data to device
+a_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostptr=a_np)
+b_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostptr=b_np)
+res_g = cl.Buffer(ctx, mf.WRITE_ONLY, a_np.nbytes)
+prg = cl.Program(ctx, mul_kernel)
+# enqueue the job
+event_mul = prg.sum(queue, a_np.shape, None, a_g, b_g, res_g)
+event_mul.wait()
+```
+---
+# ND-Range
+
+![width:900px](fig/ndrange2d.png)
 
 ---
+# # Work‑Groups & Work‑Items
 
-# Work‑Items
-
-Kernel execution creates many **work‑items**.
-
-Each work‑item has identifiers:
-
-```
-get_global_id()
-get_local_id()
-get_group_id()
-```
-
-Example:
-
-```
-globalID = groupSize * groupID + localID
-```
-
----
-
-# Work‑Groups
-
-Work‑items are grouped into **work‑groups**.
-
-Structure:
-
-NDRange  
-→ Work‑groups  
-→ Work‑items
-
-Work‑items inside a group:
-
-- can synchronize
-- share local memory
-
+Kernel execution creates many **work‑items**
+Work‑items are grouped into **work‑groups**
 Work‑groups are **independent**.
+**Work-items** in a single **work-group** are executed on same device, can synchronize and share local memory!
 
+```python
+work_item_global_id = get_global_id() # globalID = groupSize * groupID + localID
+work_item_local_id = get_local_id()
+work_item_group_id = get_group_id()
+group_size = get_local_size()
+ndrange_size = get_global_size()
+```
 ---
+# Example
 
-# Global vs Local Dimensions
-
-Two dimensions define execution:
-
-Global size
-- total number of threads
-
-Local size
-- threads per work‑group
-
-Example:
-
-Global: 1024 × 1024  
-Local: 128 × 128
+```c
+int globalID = get_global_id(0); //13​
+int localID = get_local_id(0); //3​
+int groupID = get_group_id(0); //2
+```
+![width:600px](fig/work_item_id.png)
 
 ---
 
 # Memory Model
 
-OpenCL memory hierarchy:
-
-Private memory
-- per work‑item
-
-Local memory
-- shared within work‑group
-
-Global memory
-- accessible by all work‑items
-
-Constant memory
-- read‑only global data
-
----
-
-# Memory Transfer
-
-Important constraint:
-
-Data must move between:
-
-Host (CPU)
-↔
-Device (GPU)
-
-Transfers are expensive.
-
-Performance depends heavily on **memory layout and transfers**.
+![width:450px](fig/memory_model.png)
 
 ---
 
 # Address Space Qualifiers
 
 OpenCL uses explicit memory qualifiers.
-
-```
-__global
-__local
-__constant
-__private
-```
-
-Example kernel:
-
+`__global, __local, __constant, __private`
 ```c
-__kernel void vadd(__global const float *a,
+__kernel void vadd(__global const float *a, // read-only global memory
                    __global const float *b,
-                   __global float *result)
+                   __local float* c,  // shared local memory work-group
+                   __global float *result) // read/write global memory
 {
+    float k = 2.0f; // implicitly private
     int id = get_global_id(0);
-    result[id] = a[id] + b[id];
+    c[get_local_id(0)] = a[id] + b[id]; // shared memory in work-group
+    ...
+    result[get_group_id(0)] = c[0];
 }
 ```
 
 ---
 
 # Synchronization
-
-Within a work‑group:
-
+```c
+__kernel void foo(__global const float *a,
+                   __local float* c  // shared local memory work-group
+{
+    int id = get_global_id(0);
+    c[get_local_id(0)] = a[id] * 3.0f; // shared memory in work-group
+    barrier(CLK_LOCAL_MEM_FENCE); // SYNC
+    group_id = get_group_id(0); // group_id == 2
+    result[group_id] = c[0];
+}
 ```
-barrier(CLK_LOCAL_MEM_FENCE);
-```
-
-This synchronizes threads in the same group.
-
-Important limitation:
-
-No synchronization between **different work‑groups**.
+![alt text](fig/sync.png)
 
 ---
 
 # Atomic Operations
 
 Atomic operations prevent race conditions.
-
-Examples:
 
 ```
 atomic_add

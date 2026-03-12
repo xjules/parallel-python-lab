@@ -39,7 +39,10 @@ uv venv <path_to_env> --python 3.13t
 OpenCL drivers installed for either CPU or GPU
 Verify OpenCL availability with:
 ```
-clinfo
+uv venv --python 3.13
+source .venv/bin/activate
+uv pip install pyopencl
+python -c "import pyopencl as cl; print(cl.get_platforms())"
 ```
 The CPU OpenCL is the easiest:
 - Intel OpenCL CPU runtime
