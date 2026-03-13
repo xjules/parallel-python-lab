@@ -236,10 +236,27 @@ atomic_min
 atomic_max
 ```
 
-Example:
 
 ```c
 uint old_val = atomic_inc(counter);
+```
+
+---
+# Simple histogram
+
+```c
+_kernel void simple_histogram(
+    __global const uint* data,
+    __global uint* histogram,
+    const uint num_elements)
+{
+    int gid = get_global_id(0);
+
+    if (gid < num_elements) {
+        uint value = data[gid];
+        atomic_inc(&histogram[value]);
+    }
+}
 ```
 
 ---
@@ -250,7 +267,7 @@ Many GPU algorithms use **reductions**.
 
 Example:
 
-Sum of array values.
+- Sum of array values.
 
 Strategy:
 
@@ -262,14 +279,15 @@ Strategy:
 
 # Example Reduction Kernel
 
+
+
 ```c
-__kernel void Sum(global int *X,
+__kernel void sum(global int *X,
                   local int *sdata,
                   global int *Y)
 {
     int tid = get_local_id(0);
     int i = get_global_id(0);
-
     sdata[tid] = X[i];
     barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -280,11 +298,14 @@ __kernel void Sum(global int *X,
 
         barrier(CLK_LOCAL_MEM_FENCE);
     }
-
     if(tid == 0)
         Y[get_group_id(0)] = sdata[0];
 }
 ```
+---
+# Example Reduction Kernel - explained
+
+![alt text](fig/reduction.png)
 
 ---
 
@@ -361,36 +382,3 @@ Important features:
 - asynchronous execution
 - event objects
 - non‑blocking kernel launches
-
----
-
-# Async Execution
-
-Commands are queued on the device.
-
-Queue operations return **events**.
-
-Events allow:
-
-```
-event.wait()
-pyopencl.wait_for_events(events)
-```
-
-This enables asynchronous GPU pipelines.
-
----
-
-# Key Takeaways
-
-OpenCL provides:
-
-- portable GPU programming
-- massive parallelism
-- device‑agnostic compute acceleration
-
-PyOpenCL allows Python applications to:
-
-- launch kernels
-- manage GPU memory
-- run asynchronous compute pipelines
