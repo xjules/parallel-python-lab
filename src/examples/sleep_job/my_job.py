@@ -2,6 +2,34 @@ import asyncio
 import time
 
 
+async def main_duration():
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+        return f"Sleeping for {sleep_time} seconds"
+
+    sleep2 = asyncio.create_task(my_job(2))
+    sleep3 = asyncio.create_task(my_job(3))
+    result2 = await sleep2
+    result3 = await sleep3
+    print(result2)
+    print(result3)
+
+
+async def main_duration_extended():
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+        return f"Sleeping for {sleep_time} seconds"
+
+    sleep2 = asyncio.create_task(my_job(2))
+    sleep3 = asyncio.create_task(my_job(3))
+    result1 = await my_job(2)
+    result2 = await sleep2
+    result3 = await sleep3
+    print(result1)
+    print(result2)
+    print(result3)
+
+
 async def main_gather():
     future = asyncio.Future()
 
@@ -32,21 +60,6 @@ async def main_CPU_bound():
     await task_sleep
     print(f"Result 1: {result1}")
     print(f"Result 2: {result2}")
-
-
-async def main_duration():
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
-        return f"Sleeping for {sleep_time} seconds"
-
-    sleep2 = asyncio.create_task(my_job(2))
-    sleep3 = asyncio.create_task(my_job(3))
-    result1 = await my_job(2)
-    result2 = await sleep2
-    result3 = await sleep3
-    print(result1)
-    print(result2)
-    print(result3)
 
 
 async def main_wait_for():
@@ -108,12 +121,12 @@ async def main_cancel():
 if __name__ == "__main__":
 
     start = time.time()
-    # asyncio.run(main_duration())
+    asyncio.run(main_duration())
     # asyncio.run(main_cancel())
     # asyncio.run(main_wait_for())
     # asyncio.run(main_wait_for_with_shield())
     # asyncio.run(main_future())
     # asyncio.run(main_CPU_bound())
-    asyncio.run(main_gather())
+    # asyncio.run(main_gather())
     end = time.time()
     print(f"Execution time: {end - start:.2f} seconds")
