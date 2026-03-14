@@ -19,17 +19,27 @@ async def main_CPU_bound():
     print(f"Result 2: {result2}")
 
 
+async def main_disk_read():
+    def read_file(path):
+        with open(path, "r") as f:
+            return f.read()
+
+    async def read_task(name, path):
+        print(f"{name} reading file")
+        content = await asyncio.to_thread(read_file, path)
+        print(f"{name} read {len(content)} characters")
+
+    t1 = asyncio.create_task(read_task("A", "file1.txt"))
+    t2 = asyncio.create_task(read_task("B", "file2.txt"))
+
+    await asyncio.gather(t1, t2)
+
+
 if __name__ == "__main__":
 
     start = time.time()
-    # asyncio.run(main_duration())
-    # asyncio.run(main_cancel_1())
-    # asyncio.run(main_cancel_2())
-    # asyncio.run(main_wait_for())
-    # asyncio.run(main_wait_for_with_shield())
-    # asyncio.run(main_future())
-    # asyncio.run(main_gather())
     # asyncio.run(main_CPU_bound())
+    asyncio.run(main_disk_read())
 
     end = time.time()
     print(f"Execution time: {end - start:.2f} seconds")

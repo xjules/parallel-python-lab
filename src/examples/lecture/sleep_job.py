@@ -129,17 +129,15 @@ async def main_gather_invalide_state():
     print(results)
 
 
-async def main_context_manager():
+async def main_taskgroup():
     async def my_job(sleep_time):
         await asyncio.sleep(sleep_time)
         return f"Sleeping for {sleep_time} seconds"
 
-    with asyncio.TaskGroup() as tg:
-        future = tg.Future()
+    async with asyncio.TaskGroup() as tg:
         sleep1 = tg.create_task(my_job(1))
         sleep2 = tg.create_task(my_job(2))
         sleep3 = tg.create_task(my_job(3))
-        future.set_result("Future is done!")
     print(sleep1.result())
     print(sleep2.result())
     print(sleep3.result())
@@ -155,7 +153,7 @@ if __name__ == "__main__":
     # asyncio.run(main_wait_for_with_shield())
     # asyncio.run(main_future())
     # asyncio.run(main_gather())
-    asyncio.run(main_context_manager())
+    asyncio.run(main_taskgroup())
 
     end = time.time()
     print(f"Execution time: {end - start:.2f} seconds")
