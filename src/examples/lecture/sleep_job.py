@@ -30,36 +30,35 @@ async def main_duration_extended():
     print(result3)
 
 
-async def main_gather():
-    future = asyncio.Future()
-
+async def main_cancel_1():
     async def my_job(sleep_time):
         await asyncio.sleep(sleep_time)
-
-        future.set_result(sleep_time)
         return f"Sleeping for {sleep_time} seconds"
 
-    sleep2 = asyncio.create_task(my_job(2))
-    results = await asyncio.gather(my_job(3), sleep2)
-    # results = await asyncio.gather(my_job(3), sleep2, future, return_exceptions=True)
-    print(results)
+    sleep2 = asyncio.create_task(my_job(200))
+    await asyncio.sleep(1)
+    if not sleep2.done():
+        sleep2.cancel()
+    try:
+        await sleep2
+    except asyncio.CancelledError:
+        print("Task was cancelled")
 
 
-async def main_CPU_bound():
-    async def cpu_bound_job(n):
-        count = 0
-        for i in range(n):
-            count += i
-        return count
+async def main_cancel_2():
+    async def my_job(sleep_time):
+        try:
+            await asyncio.sleep(sleep_time)
+        except asyncio.CancelledError:
+            return "Task was cancelled!"
+        return f"Sleeping for {sleep_time} seconds"
 
-    task_sum_1 = asyncio.create_task(cpu_bound_job(10**8))
-    task_sum_2 = asyncio.create_task(cpu_bound_job(10**8))
-    task_sleep = asyncio.create_task(asyncio.sleep(2))  # 2secs
-    result1 = await task_sum_1
-    result2 = await task_sum_2
-    await task_sleep
-    print(f"Result 1: {result1}")
-    print(f"Result 2: {result2}")
+    sleep2 = asyncio.create_task(my_job(200))
+    await asyncio.sleep(1)
+    if not sleep2.done():
+        sleep2.cancel()
+    result = await sleep2
+    print(result)
 
 
 async def main_wait_for():
@@ -102,31 +101,61 @@ async def main_future():
     await sleep_task
 
 
-async def main_cancel():
+async def main_gather():
+    future = asyncio.Future()
+
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+
+        future.set_result(sleep_time)
+        return f"Sleeping for {sleep_time} seconds"
+
+    sleep2 = asyncio.create_task(my_job(2))
+    results = await asyncio.gather(sleep2, future)
+    print(results)
+
+
+async def main_gather_invalide_state():
+    future = asyncio.Future()
+
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+
+        future.set_result(sleep_time)
+        return f"Sleeping for {sleep_time} seconds"
+
+    sleep2 = asyncio.create_task(my_job(2))
+    results = await asyncio.gather(my_job(3), sleep2, future, return_exceptions=True)
+    print(results)
+
+
+async def main_context_manager():
     async def my_job(sleep_time):
         await asyncio.sleep(sleep_time)
         return f"Sleeping for {sleep_time} seconds"
 
-    sleep2 = asyncio.create_task(my_job(200))
-    await asyncio.sleep(1)
-    if not sleep2.done():
-        sleep2.cancel()
-    await sleep2
-    # try:
-    #     await sleep2
-    # except asyncio.CancelledError:
-    #     print("Task was cancelled")
+    with asyncio.TaskGroup() as tg:
+        future = tg.Future()
+        sleep1 = tg.create_task(my_job(1))
+        sleep2 = tg.create_task(my_job(2))
+        sleep3 = tg.create_task(my_job(3))
+        future.set_result("Future is done!")
+    print(sleep1.result())
+    print(sleep2.result())
+    print(sleep3.result())
 
 
 if __name__ == "__main__":
 
     start = time.time()
-    asyncio.run(main_duration())
-    # asyncio.run(main_cancel())
+    # asyncio.run(main_duration())
+    # asyncio.run(main_cancel_1())
+    # asyncio.run(main_cancel_2())
     # asyncio.run(main_wait_for())
     # asyncio.run(main_wait_for_with_shield())
     # asyncio.run(main_future())
-    # asyncio.run(main_CPU_bound())
     # asyncio.run(main_gather())
+    asyncio.run(main_context_manager())
+
     end = time.time()
     print(f"Execution time: {end - start:.2f} seconds")

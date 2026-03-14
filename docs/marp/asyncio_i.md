@@ -185,26 +185,10 @@ await sleep_task
 - **Future** — low-level: _pending → result/exception_
 - **Task** — a `Future` that wraps & drives a coroutine on the event loop
 ---
-# `asyncio.gather`
-runs and await multiple awaitables
-- Results are in the same same order as the inputs
-- It automatically turns coroutines into tasks
-``` python
-async def my_job(sleep_time):
-    await asyncio.sleep(sleep_time)
-    return f"Sleeping for {sleep_time} seconds"
-
-future = asyncio.Future()
-sleep2 = asyncio.create_task(my_job(2))
-results = await asyncio.gather(my_job(3), sleep2, future)
-print(results)
-```
-
----
 # Future
 Placeholder for a result
 - promise of a value
-- lower-level primitives
+- lower-level primitive
 ```python
 async def my_job(sleep_time, future):
     await asyncio.sleep(sleep_time)
@@ -233,9 +217,22 @@ sleep2 = asyncio.create_task(my_job(2))
 results = await asyncio.gather(my_job(3), sleep2, future)
 ```
 ---
-# Gather - note!
-Cannot be set twice or more!
+# `asyncio.gather`
+runs and await multiple awaitables
+- Results are in the same same order as the inputs
+- It automatically turns coroutines into tasks
+``` python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)
+    return f"Sleeping for {sleep_time} seconds"
 
+future = asyncio.Future()
+sleep2 = asyncio.create_task(my_job(2))
+results = await asyncio.gather(my_job(3), sleep2, future)
+print(results)
+```
+---
+# Gather - note!
 ```python
 future = asyncio.Future()
 
@@ -249,137 +246,55 @@ sleep2 = asyncio.create_task(my_job(2))
 # let's not raise!
 results = await asyncio.gather(my_job(3), sleep2, future, return_exceptions=True)
 ```
+---
+# Async context manager
+asynchronous version of the with statement
+
+- It uses async with to handle resources
+- await to open or close 
+- `__aenter__` and `__aexit__` 
+- Non-blocking cleanup
+
+### Note: implement async with foodtruck:
 
 ---
-# Future - note!
-Cannot be set twice or more!
+
+# Async context manager - alternative
 
 ```python
-future = asyncio.Future()
+from contextlib import asynccontextmanager
 
-async def my_job(sleep_time):
-    await asyncio.sleep(sleep_time)
-    if not future.done(): #  make sure it is not done already
-        future.set_result(sleep_time)
-    return f"Sleeping for {sleep_time} seconds"
-
-sleep2 = asyncio.create_task(my_job(2))
-results = await asyncio.gather(my_job(3), sleep2, future)
+@asynccontextmanager
+async def seismic_file_access():
+    print("Opening file...")
+    try:
+        yield "seismic file"
+    finally:
+        print("Closing file...")
 ```
 ---
-# CPU bound code
-code might execute sequentially
+# TaskGroup
+async context manager that provides structured concurrency
+
+- safer alternative to `asyncio.gather()`
+    - if one task fails **all other tasks** are automatically cancelled
+```python
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+    async with asyncio.TaskGroup() as tg:
+        t1 = tg.create_task(my_job(2))
+        t2 = tg.create_task(my_job(5))
+    # at this point t1 and t2 are finished!
+```
+---
+# Async Iterators
 
 ```python
-async def cpu_bound_job(n):
-    count = 0
-    for i in range(n):
-        count += i
-    return count
+async def async_range(count):
+    for i in range(count):
+        await asyncio.sleep(0.5)
+        yield i
 
-    task_sum_1 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
-    task_sum_2 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
-    result1 = await task_sum_1
-    result2 = await task_sum_2
-    print(f"Results: {result1=} {result2=}")
-```
----
-# CPU bound code
-- parallelization might help
-```python
-async def cpu_bound_job(n):
-    count = 0
-    for i in range(n):
-        count += i
-    return count
-
-    task_sum_1 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
-    task_sum_2 = asyncio.create_task(cpu_bound_job(10**8)) #2secs
-    task_sleep = asyncio.create_task(asyncio.sleep(2)) #2secs
-    result1 = await task_sum_1
-    result2 = await task_sum_2
-    await task_sleep
-    print(f"Results: {result1=} {result2=}")
-```
----
-# Event loop - central scheduler
-- The core of every `asyncio` application that manages and distributes execution
-- Execution Model runs in a **single thread** and performs three primary jobs
-    - **Monitor** OS I/O events (network sockets, pipes, etc.).
-    - **Run** ready callbacks and scheduled tasks
-    - **Resume** coroutines whose awaited operations (like I/O) have completed
----
-
-# Event loop - managing concurrency
-- The Loop Cycle - maintains a queue of tasks and runs them one at a time until a task hits `await`
-- Yielding control - when a coroutine hits `await`, it pauses and tells the loop: 
-    - _I am waiting for I/O; run something else in the meantime_
-
----
-# Event loop - efficiency
-
-- OS Notification
-    - The loop uses efficient system-level APIs (**epoll**, **kqueue**, or **IOCP**) to track these pauses without wasting CPU cycles
-    - Thousands of "ultra-light" tasks can overlap on a single CPU core, creating massive concurrency for I/O-bound workloads
-
-
----
-# Event loop - creation `asyncio.run()`
-- The recommended way to launch an async application
-- Automated Lifecycle that performs three critical steps:
-    1. Creates a brand-new **Event Loop**
-    2. Runs the main coroutine until completion
-    3. Handles cleanup and closes the loop automatically
-
-``` python
-async def main_task():
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
-
-    sleep2 = asyncio.create_task(my_job(2))
-asyncio.run(main_task(), debug=True)
-```
----
-# Event loop - direct access
-``` python
-async def main_task():
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
-
-    loop = asyncio.get_running_loop()
-    loop.call_soon(my_job)
-asyncio.run(main_task())
-```
----
-# Event loop - signal handlers
-``` python
-async def main_task():
-    def cancel_tasks():
-        tasks = asyncio.all_tasks()
-        [task.cancel() for task in tasks]
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
-
-    loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, cancel_tasks)
-asyncio.run(main_task())
-```
----
-
-# Event Loop - run sync tasks concurrently
-
-``` python
-
-def sync_job_1():
-    # heavy job
-def sync_job_2():
-    # heavy job
-async def run():
-    my_loop = asyncio.get_running_loop()
-    tasks = [
-        loop.run_in_executor(None, sync_io_task_1),
-        loop.run_in_executor(None, sync_io_task_2),
-    ]
-    results = await asyncio.gather(*tasks)
-asyncio.run(run())
+async for number in async_range(5):
+    print(f"N: {number}")
 ```
