@@ -25,36 +25,12 @@ cli = [
   "click>=8.1",
 ]
 
-numba = [
-  "numba>=0.59",
-]
-
 opencl = [
-  "pyopencl>=2024.3",
+  "pyopencl>=2026.1",
 ]
 
-viz = [
-  "matplotlib>=3.8",
-  "fastapi>=0.110",
-  "uvicorn[standard]>=0.27",
-]
-
-dev = [
-  "pytest>=8.0",
-  "pytest-cov>=5.0",
-  "ruff>=0.6",
-  "mypy>=1.8",
-]
-
-all = [
-  "rich>=13.7",
-  "tqdm>=4.66",
-  "click>=8.1",
-  "numba>=0.59",
-  "pyopencl>=2024.3",
-  "matplotlib>=3.8",
-  "fastapi>=0.110",
-  "uvicorn[standard]>=0.27",
+async = [
+  "aiofiles>=23.1",
 ]
 
 [tool.ruff]

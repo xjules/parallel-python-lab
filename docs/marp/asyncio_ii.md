@@ -6,7 +6,39 @@ paginate: true
 size: 16:9
 ---
 
+# Event loop - central scheduler
+The core of every `asyncio` application that manages and distributes execution
+- Execution Model runs in a **single thread** and performs three primary jobs
+    - **Monitor** OS I/O events (network sockets, pipes, etc.).
+    - **Run** ready callbacks and scheduled tasks
+    - **Resume** coroutines whose awaited operations (like I/O) have completed
+---
 
+# Event loop - managing concurrency
+Loop cycle maintains a queue of tasks and runs them one at a time until
+- a task hits `await`, which yields control
+    - `I am waiting for I/O; run something else in the meantime`
+
+The loop uses efficient system-level APIs (**epoll**, **kqueue**, or **IOCP**) to track these pauses without wasting CPU cycles
+- Thousands of "ultra-light" tasks can overlap on a single CPU core!
+
+---
+# Event loop - creation `asyncio.run()`
+
+Performs three critical steps
+- Creates a brand-new **Event Loop**
+- Runs the main coroutine until completion
+- Handles cleanup and closes the loop automatically
+
+``` python
+async def main_task():
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+
+    sleep = asyncio.create_task(my_job(2))
+    await sleep
+asyncio.run(main_task(), debug=True)
+```
 ---
 # Task coordination
 
@@ -21,14 +53,14 @@ real systems must handle
 ---
 # Async Workload Types
 
-- Async excels at **I/O-bound** workloads
-    - web scraping
-    - API calls
-    - file processing
-    - streaming pipelines
-    - messaging
-- Typical pattern: `wait → process → wait → process`
-    - while waiting, the event loop runs other tasks
+Async excels at **I/O-bound** workloads
+- web scraping
+- API calls
+- file processing
+- streaming pipelines
+- messaging
+
+Typical pattern: `wait → process → wait → process`. While waiting, the event loop runs other tasks
 
 ---
 # Common Async Patterns
@@ -86,11 +118,10 @@ job = await queue.get()
 ---
 # Async Pipelines
 Work split into stages
-- Ex., Download → Parse → Store
-- Each stage 
-    - reads from async Queue
-    - writes to async Queue
-    - Queue → Workers → Queue → Workers
+- eg., Download → Parse → Store
+- Each stage reads from one async Queue and writes to another
+
+Queue → Workers → Queue → Workers
 
 ```python
 download_q = asyncio.Queue()
@@ -162,7 +193,7 @@ Use cases:
 - multiple tasks modify the same data
 
 ---
-# CPU bound code blocks the event loop
+# CPU bound code 
 once started, each task will keep event loop busy
 
 ```python
@@ -196,84 +227,87 @@ async def cpu_bound_job(n):
     print(f"Results: {result1=} {result2=}")
 ```
 ---
-# Event loop - central scheduler
-- The core of every `asyncio` application that manages and distributes execution
-- Execution Model runs in a **single thread** and performs three primary jobs
-    - **Monitor** OS I/O events (network sockets, pipes, etc.).
-    - **Run** ready callbacks and scheduled tasks
-    - **Resume** coroutines whose awaited operations (like I/O) have completed
----
+# I/O bound code - disk access
+```python
+async def read_file(path):
+    with open(path, "r") as f:
+        return f.read()
 
-# Event loop - managing concurrency
-- The Loop Cycle - maintains a queue of tasks and runs them one at a time until a task hits `await`
-- Yielding control - when a coroutine hits `await`, it pauses and tells the loop: 
-    - _I am waiting for I/O; run something else in the meantime_
+async def main():
+    t1 = asyncio.create_task(read_file("file1.txt"))
+    t2 = asyncio.create_task(read_file("file2.txt"))
 
----
-# Event loop - efficiency
+    content1 = await t1
+    content2 = await t2
+    print(len(content1), len(content2))
+```
 
-- OS Notification
-    - The loop uses efficient system-level APIs (**epoll**, **kqueue**, or **IOCP**) to track these pauses without wasting CPU cycles
-    - Thousands of "ultra-light" tasks can overlap on a single CPU core, creating massive concurrency for I/O-bound workloads
-
+`async def` won't make the code non-blocking
 
 ---
-# Event loop - creation `asyncio.run()`
-- The recommended way to launch an async application
-- Automated Lifecycle that performs three critical steps:
-    1. Creates a brand-new **Event Loop**
-    2. Runs the main coroutine until completion
-    3. Handles cleanup and closes the loop automatically
+# I/O bound code - disk access
+move blocking work off the event loop
 
-``` python
-async def main_task():
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
+```python
+def read_file(path):
+    with open(path, "rb") as f:
+        return f.read()
 
-    sleep2 = asyncio.create_task(my_job(2))
-asyncio.run(main_task(), debug=True)
+async def read_task(name, path):
+    content = await asyncio.to_thread(read_file, path)
+
+t1 = asyncio.create_task(read_task("file1.txt"))
+t2 = asyncio.create_task(read_task("file2.txt"))
+
+await asyncio.gather(t1, t2)
 ```
 ---
-# Event loop - direct access
-``` python
-async def main_task():
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
 
+# I/O bound code - disk access -equivalent
+move blocking work off the event loop
+
+```python
+def read_file(path):
+    with open(path, "rb") as f:
+        return f.read()
+
+async def read_task(name, path):
     loop = asyncio.get_running_loop()
-    loop.call_soon(my_job)
-asyncio.run(main_task())
+    content = await loop.run_in_executor(None, read_file, path)
+
+t1 = asyncio.create_task(read_task("file1.txt"))
+t2 = asyncio.create_task(read_task("file2.txt"))
+
+await asyncio.gather(t1, t2)
 ```
 ---
-# Event loop - signal handlers
-``` python
-async def main_task():
-    def cancel_tasks():
-        tasks = asyncio.all_tasks()
-        [task.cancel() for task in tasks]
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
+# I/O bound code - aiofiles
 
-    loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, cancel_tasks)
-asyncio.run(main_task())
+```python
+async def read_file(path):
+    async with aiofiles.open(path, "rb") as f:
+        return await f.read()
+
+t1 = asyncio.create_task(read_file("file1.txt"))
+t2 = asyncio.create_task(read_file("file2.txt"))
+
+await asyncio.gather(t1, t2)
 ```
+
+the event loop can schedule other tasks while disk I/O is pending
+- `asyncio.to_thread` moves blocking code to a thread
+
 ---
+# Why this works
 
-# Event Loop - run sync tasks concurrently
+- Disk, network, and database calls spend most time **waiting**
+- While one task waits, the event loop runs another task
+- Asyncio improves **throughput**, not raw compute speed
 
-``` python
+Rule of thumb:
 
-def sync_job_1():
-    # heavy job
-def sync_job_2():
-    # heavy job
-async def run():
-    my_loop = asyncio.get_running_loop()
-    tasks = [
-        loop.run_in_executor(None, sync_io_task_1),
-        loop.run_in_executor(None, sync_io_task_2),
-    ]
-    results = await asyncio.gather(*tasks)
-asyncio.run(run())
-```
+CPU-bound  
+→ processes / native code / GPU
+
+I/O-bound  
+→ asyncio / async frameworks

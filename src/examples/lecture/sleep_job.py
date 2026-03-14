@@ -143,17 +143,21 @@ async def main_taskgroup():
     print(sleep3.result())
 
 
-if __name__ == "__main__":
-
+def run_func_async(func):
+    print(f"Running {func.__name__}...")
     start = time.time()
-    # asyncio.run(main_duration())
-    # asyncio.run(main_cancel_1())
-    # asyncio.run(main_cancel_2())
-    # asyncio.run(main_wait_for())
-    # asyncio.run(main_wait_for_with_shield())
-    # asyncio.run(main_future())
-    # asyncio.run(main_gather())
-    asyncio.run(main_taskgroup())
-
+    asyncio.run(func())
     end = time.time()
     print(f"Execution time: {end - start:.2f} seconds")
+
+
+if __name__ == "__main__":
+
+    # run_func_async(main_duration)
+    # run_func_async(main_cancel_1)
+    # run_func_async(main_cancel_2)
+    # run_func_async(main_wait_for)
+    # run_func_async(main_wait_for_with_shield)
+    # run_func_async(main_future)
+    # run_func_async(main_gather)
+    run_func_async(main_taskgroup)

@@ -298,3 +298,14 @@ async def async_range(count):
 async for number in async_range(5):
     print(f"N: {number}")
 ```
+
+---
+# Tasks - async foodtruck
+
+- Implement **async** version of the foodtruck 
+    - We don't want to wait for the stage to finish
+    - All stages should be async. 
+    - Try to use asyncio.gather(...). 
+    - Each task should exit gracefully. We don't want Ctrl+C
+- Implement **exception** handling
+- Introduce random exception to the cook stage (random chance order gets burned) and handle it
