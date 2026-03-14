@@ -13,7 +13,6 @@ The core of every `asyncio` application that manages and distributes execution
     - **Run** ready callbacks and scheduled tasks
     - **Resume** coroutines whose awaited operations (like I/O) have completed
 ---
-
 # Event loop - managing concurrency
 Loop cycle maintains a queue of tasks and runs them one at a time until
 - a task hits `await`, which yields control
@@ -91,16 +90,18 @@ results = await asyncio.gather(
 ---
 # Worker Pool Pattern
 
-- limit concurrency; ex. 1000 downloads but only 10 workers
-    - bounded concurrency
-    - stable memory usage
-    - predictable load
+Limit concurrency using fixed number of workers  eg., 1000 downloads but only 10 workers
+
+Benefits include bounded concurrency, stable memory usage, predictable load, ..
 
 ``` python
 async def worker(queue):
     while True:
         job = await queue.get()
         await process(job)
+        queue.task_done()
+    ...
+    # shutdown gracefully: await queue.join()
 ```
 ---
 # Producer--Consumer Pattern
@@ -194,7 +195,7 @@ Use cases:
 
 ---
 # CPU bound code 
-once started, each task will keep event loop busy
+once started, each [task](../../src/examples/lecture/io_cpu_bound.py) will keep event loop busy
 
 ```python
 async def cpu_bound_job(n):
@@ -298,11 +299,11 @@ the event loop can schedule other tasks while disk I/O is pending
 - `asyncio.to_thread` moves blocking code to a thread
 
 ---
-# Why this works
+# It works ....
 
 - Disk, network, and database calls spend most time **waiting**
 - While one task waits, the event loop runs another task
-- Asyncio improves **throughput**, not raw compute speed
+- Asyncio improves latency hiding
 
 Rule of thumb:
 
@@ -311,3 +312,16 @@ CPU-bound
 
 I/O-bound  
 → asyncio / async frameworks
+
+---
+# Async Foodtruck – Pipeline System
+
+Refactor the async foodtruck into a **pipeline architecture**
+
+- Orde Queue with **limited size**
+- Use **asyncio.Queue** for order flow
+- Implement a **worker pool** for cooks (multiple cooks allowed)
+- Use **asyncio.Semaphore** to limit cooking stations
+- Introduce random cooking failures (burned orders)
+- Handle exceptions without crashing the system
+- Graceful shutdown

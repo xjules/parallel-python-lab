@@ -24,7 +24,7 @@ async def run():
 ```
 
 - `async def` creates a coroutine
-- `await` yields control to the event loop
+- `await` yields control to the event loop if awaited object is not ready
     - requires **an event loop!**
 - Normal functions block
 - Coroutines can cooperate
@@ -35,7 +35,7 @@ async def run():
 The Suspension Point - used to pause the current coroutine until the awaited operation finishes
 
 - **Yielding Control** - when you `await`, you tell the Event Loop: 
-    - _"I am waiting; go ahead and run something else in the meantime"_
+    - _"I am still waiting; go ahead and run something else in the meantime"_
 - `await` can **only** be used inside a coroutine, `async def`
 
 ---
@@ -84,10 +84,28 @@ await sleep3
 
 ---
 # Tasks - cancellation
-very straightforward!
+
+**straightforward!**
+
 ```python
 async def my_job(sleep_time):
     await asyncio.sleep(sleep_time)
+
+sleep_job = asyncio.create_task(my_job(100))
+await asyncio.sleep(1)
+sleep_job.cancel()
+#...
+await sleep_job
+
+```
+---
+# Tasks - cancellation
+
+cancellation injects `CancelledError` at the next await point
+
+```python
+async def my_job(sleep_time):
+    await asyncio.sleep(sleep_time)  # <--- the point of cancellation
 
 sleep_job = asyncio.create_task(my_job(100))
 await asyncio.sleep(1)
@@ -247,6 +265,37 @@ sleep2 = asyncio.create_task(my_job(2))
 results = await asyncio.gather(my_job(3), sleep2, future, return_exceptions=True)
 ```
 ---
+# Async - Queue
+
+Async producer / consumer queue
+
+- coroutine safe
+- work distribution
+- job distribution
+- streaming systems
+
+```python
+queue = asyncio.Queue()
+
+await queue.put(order)
+order = await queue.get()
+```
+---
+# TaskGroup
+async context manager that provides structured concurrency
+
+- safer alternative to `asyncio.gather()`
+    - if one task fails **all other tasks** are automatically cancelled
+```python
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+    async with asyncio.TaskGroup() as tg:
+        t1 = tg.create_task(my_job(2))
+        t2 = tg.create_task(my_job(5))
+    # at this point t1 and t2 are finished!
+```
+---
+
 # Async context manager
 asynchronous version of the with statement
 
@@ -272,20 +321,7 @@ async def seismic_file_access():
     finally:
         print("Closing file...")
 ```
----
-# TaskGroup
-async context manager that provides structured concurrency
 
-- safer alternative to `asyncio.gather()`
-    - if one task fails **all other tasks** are automatically cancelled
-```python
-    async def my_job(sleep_time):
-        await asyncio.sleep(sleep_time)
-    async with asyncio.TaskGroup() as tg:
-        t1 = tg.create_task(my_job(2))
-        t2 = tg.create_task(my_job(5))
-    # at this point t1 and t2 are finished!
-```
 ---
 # Async Iterators
 

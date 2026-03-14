@@ -11,15 +11,16 @@ theme: dracula
 Python 3.13 introduces an **experimental free-threaded build**
 
 - Removes the **Global Interpreter Lock**
-- Multiple Python threads can execute **bytecode simultaneously**
+- Multiple Python threads can execute Python bytecode **at the same time**
 - Enables **true CPU parallelism** with threads
 - Still experimental (not default yet)
-- ⚠️ Many libraries are **not yet thread-safe**
+    - ⚠️ Many libraries are **not yet thread-safe**
 - CPU-bound tasks
 
 ------------------------------------------------------------------------
 
-# Installing Free-Threaded Python (uv + venv)
+# Installing Free-Threaded Python
+3.13t or 3.14t = free-threaded build
 ``` bash
 uv venv env313t --python 3.13t
 ```
@@ -31,10 +32,9 @@ print(sys._is_gil_enabled())
 ```
 
 ---
-
 # Example
 
-- Threads are **truly in parallel**
+Threads are **truly in parallel**
 ``` python
 def work():
     total = 0
@@ -48,35 +48,62 @@ for t in threads:
 for t in threads:
     t.join()
 ```
+---
+# Are threads enough?
+
+threads scale poorly for IO concurrency
+async scales poorly for CPU parallelism
+
+eg., 10000 HTTP requests
+- threads: 10000 threads - memory explosion
+- async - 10000 tasks - cheap
+
+---
+# Async + Parallel Architecture
+
+```
+async event loop
+        │
+        │ orchestrates
+        ▼
+thread pool / process pool
+        │
+        ▼
+CPU parallel work
+```
+---
+
 
 ---
 
 # Asyncio + Free-Threaded
 
-- `asyncio` runs an **event loop** that is typically **single-threaded**
+`asyncio` runs an **event loop** that is typically **single-threaded**
 - Free-threaded Python does **not** make coroutines parallel
 - `await` still means: _"pause me, run something else"_
 - `asyncio` offloads work to **threads**, which can execute in parallel
 - **one loop** = one thread that drives coroutine execution
 
 ---
+# Async with CPU bound work
 
-# Async execution of CPU work (now worth it)
+GIL 
+- thread offload helps mostly for I/O or C-extensions releasing GIL  
 
-Before (GIL): thread offload helps mostly for I/O or C-extensions releasing GIL  
-After (no-GIL): thread offload can speed up **pure Python CPU loops**
+No-GIL
+- thread offload can speed up **pure Python CPU loops**
+
+---
+# Async with CPU bound work
 
 ```python
-import asyncio
-
-def cpu_work(n: int) -> int:
+def cpu_work(n):
     s = 0
     for i in range(n):
         s += i
     return s
 
 async def main():
-    # 4 CPU jobs in parallel threads (no-GIL makes this real parallelism)
     results = await asyncio.gather(
         asyncio.to_thread(cpu_work, 50_000_000),
         asyncio.to_thread(cpu_work, 50_000_000),
@@ -84,8 +111,6 @@ async def main():
         asyncio.to_thread(cpu_work, 50_000_000),
     )
     print(sum(results))
-
-asyncio.run(main())
 ```
 
 ---
@@ -93,7 +118,7 @@ asyncio.run(main())
 # Bounded concurrency
 
 Use Semaphore!
-    - avoid `gather(*[to_thread(...) for _ in range(10_000)])`
+- avoid `gather(*[to_thread(...) for _ in range(10_000)])`
 
 ```python
 async def worker(sem: asyncio.Semaphore):
@@ -103,14 +128,11 @@ async def worker(sem: asyncio.Semaphore):
 
 async def main():
     sem = asyncio.Semaphore(8)
-    tasks = [worker(sem, 30_000_000) for _ in range(100)]
+    tasks = [worker(sem) for _ in range(100)]
     results = await asyncio.gather(*tasks)
-
-asyncio.run(main())
 ```
 ---
 # Better control
-
 ```python
 async def main():
     async with asyncio.TaskGroup() as tg:
@@ -121,41 +143,61 @@ asyncio.run(main())
 ```
 
 ---
-# Messaging
+# Message to the main loop
 
 ```python
 def worker(loop: asyncio.AbstractEventLoop, q: asyncio.Queue):
     # quick sync job / signal to the loop
-    loop.call_soon_threadsafe(q.put_nowait, "hello from thread")
+    loop.call_soon_threadsafe(q.put_nowait, "worker started ...")
+    cpu_bound_func(...)
+    loop.call_soon_threadsafe(q.put_nowait, "worker finished.")
 
 async def main():
     loop = asyncio.get_running_loop()
     q = asyncio.Queue()
-
     await asyncio.to_thread(worker, loop, q)
-
-    item = await q.get()
-    print(item)
-
-asyncio.run(main())
+    while True:
+        item = await q.get()
+        print(item)
 ```
 ---
-# Across thread and across loops
-```python
-async def consume(x):
-    await asyncio.sleep(0)
-    print(f"consumed: {x}")
+# Collaboration
 
-def worker(loop):
-    # start async work and get the results
-    fut = asyncio.run_coroutine_threadsafe(consume("from thread"), loop)
-    fut.result()
+```python
+def worker(job_id: int, loop: asyncio.AbstractEventLoop, q: asyncio.Queue):
+    loop.call_soon_threadsafe(q.put_nowait, f"worker {job_id} started ...")
+    cpu_bound_func(...)
+    loop.call_soon_threadsafe(q.put_nowait, f"worker {job_id} finished.")
 
 async def main():
     loop = asyncio.get_running_loop()
-    await asyncio.to_thread(worker, loop)
+    q = asyncio.Queue()
+    async with asyncio.TaskGroup() as tg:
+        for i in range(100):
+            tg.create_task(asyncio.to_thread(worker, i, loop, q))
+        while True:
+            item = await q.get()
+            print(item)
+```
+---
+# Collaboration - cont.
 
-asyncio.run(main())
+```python
+async def send_status(msg):
+    # send async message
+def worker(job_id: int, loop: asyncio.AbstractEventLoop, q: asyncio.Queue):
+    loop.call_soon_threadsafe(q.put_nowait, f"worker {job_id} started ...")
+    cpu_bound_func(...)
+    loop.run_coroutine_threadsafe(send_status(f"worker {job_id} finished."))
+async def main():
+    loop = asyncio.get_running_loop()
+    q = asyncio.Queue()
+    async with asyncio.TaskGroup() as tg:
+        for i in range(100):
+            tg.create_task(asyncio.to_thread(worker, i, loop, q))
+        while True:
+            item = await q.get()
+            print(item)
 ```
 ---
 # Call soon vs run coroutine
@@ -169,49 +211,20 @@ asyncio.run(main())
 - [diagram](loop_thread_fig.md)
 ---
 
-# Synchronization: you need it *more*, not less
+# Synchronization is inevitable!
 
-No-GIL means **real data races** are now possible in Python code.
-
-Rules of thumb:
-
-- Coroutines share memory inside the loop (safe-ish by sequencing)
+No-GIL means **real data races** are now possible in Python code
+- Coroutines share memory inside the loop
 - Threads run truly parallel → shared state needs locks
 
-Use the right primitive:
-
+The right primitive:
 - Inside async code: `asyncio.Lock`, `asyncio.Queue`
 - Across threads: `threading.Lock`, `queue.Queue`
-- Between async + threads: prefer message passing; avoid shared mutable state
+- Between async + threads: prefer message passing
 
 ---
 
-# Thread ↔ Loop interaction: call it safely
-
-If a background thread must signal the event loop:
-
-- use `loop.call_soon_threadsafe(...)`
-
-```python
-import asyncio, threading
-
-async def main():
-    loop = asyncio.get_running_loop()
-    fut = loop.create_future()
-
-    def in_thread():
-        # safe cross-thread handoff
-        loop.call_soon_threadsafe(fut.set_result, "done")
-
-    threading.Thread(target=in_thread).start()
-    print(await fut)
-
-asyncio.run(main())
-```
-
----
-
-# The honest takeaway
+# Summary
 
 Free-threaded Python is **not** “async but faster”.
 
