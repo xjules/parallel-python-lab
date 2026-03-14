@@ -192,3 +192,11 @@ For CPU-bound Python code, the GIL remains locked
 - Python threads are limited by the **GIL**  
 - Different workloads require different models
 ---
+
+# Tasks - sync foodtruck
+- Add Timing Information
+    - Understand where time is spent.
+    - Measure time spent in each stage (ingredients, cook, prepare) and total time per order. Print the timings when an order is completed.
+- Process Multiple Orders
+    - See how blocking affects throughput.
+    - Increase the number of orders (e.g. from 5 to 20). Add a timestamp before starting each order.

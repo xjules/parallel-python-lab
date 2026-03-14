@@ -42,7 +42,7 @@ The Suspension Point - used to pause the current coroutine until the awaited ope
 # Tasks
 Represents the actual **concurrency**
 
-- Submits a coroutine to the event loop in the background
+- Submits a coroutine to the event loop in the [background](../../src/examples/sleep_job/my_job.py)
   - Scheduled and starts immediately
   - Runs concurrently
 ``` python
@@ -84,7 +84,7 @@ await sleep3
 
 ---
 # Tasks - cancellation
-- very straightforward!
+very straightforward!
 ```python
 async def my_job(sleep_time):
     await asyncio.sleep(sleep_time)
@@ -98,6 +98,7 @@ await sleep_job
 ```
 ---
 # Tasks - cancellation
+propagated and not handled
 ```python
 sleep_job.cancel()
 #...
@@ -112,6 +113,7 @@ asyncio.exceptions.CancelledError
 ```
 ---
 # Tasks - cancellation
+handling - I.
 ```python
 async def my_job(sleep_time):
     await asyncio.sleep(sleep_time)
@@ -124,6 +126,21 @@ try:
     await sleep_job
 except asyncio.CancellationError
   ...
+```
+---
+# Tasks - cancellation
+handling - II.
+```python
+async def my_job(sleep_time):
+    try:
+        await asyncio.sleep(sleep_time)
+    except asyncio.CancellationError
+        pass
+
+sleep_job = asyncio.create_task(my_job(100))
+await asyncio.sleep(1)
+sleep_job.cancel()
+await sleep_job
 ```
 
 ---
