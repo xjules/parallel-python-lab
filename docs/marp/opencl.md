@@ -276,10 +276,7 @@ Strategy:
 3. Write result per work‑group
 
 ---
-
 # Example Reduction Kernel
-
-
 
 ```c
 __kernel void sum(global int *X,
@@ -306,43 +303,6 @@ __kernel void sum(global int *X,
 # Example Reduction Kernel - explained
 
 ![alt text](fig/reduction.png)
-
----
-
-# Monte Carlo Methods
-
-Monte Carlo integration uses random sampling.
-
-Typical GPU workflow:
-
-1. Generate random samples
-2. Evaluate function in parallel
-3. Aggregate results
-
-Note:
-
-OpenCL does **not provide built‑in RNG**.
-
-Options:
-
-- Precompute random numbers
-- Implement custom RNG
-
----
-
-# Fractal Example
-
-Example GPU workload:
-
-Mandelbrot set.
-
-Equation:
-
-```
-z(n+1) = z(n)^2 + c
-```
-
-Each pixel can be computed **independently**, making it ideal for GPUs.
 
 ---
 
@@ -382,3 +342,19 @@ Important features:
 - asynchronous execution
 - event objects
 - non‑blocking kernel launches
+
+---
+# Task: Game of Life
+Grid rules: each cell is either **alive (1)** or **dead (0)**.
+At each step:
+- A live cell with <2 or >3 neighbors dies
+- A live cell with 2–3 neighbors survives
+- A dead cell with exactly 3 neighbors becomes alive
+
+• Use **OpenCL kernel** to update the grid
+• Each **work-item computes one cell**
+• Grid should update for many iterations
+• Visualize the grid using **matplotlib**
+
+Hints
+- Carefully handle boundary cells

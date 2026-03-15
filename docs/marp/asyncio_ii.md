@@ -314,7 +314,7 @@ I/O-bound
 → asyncio / async frameworks
 
 ---
-# Async Foodtruck – Pipeline System
+# Task: foodtruck – Pipeline System
 
 Refactor the async foodtruck into a **pipeline architecture**
 

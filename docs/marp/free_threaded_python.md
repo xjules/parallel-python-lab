@@ -217,7 +217,7 @@ No-GIL means **real data races** are now possible in Python code
 - Coroutines share memory inside the loop
 - Threads run truly parallel → shared state needs locks
 
-The right primitive:
+Choose the right primitive:
 - Inside async code: `asyncio.Lock`, `asyncio.Queue`
 - Across threads: `threading.Lock`, `queue.Queue`
 - Between async + threads: prefer message passing
@@ -226,13 +226,22 @@ The right primitive:
 
 # Summary
 
-Free-threaded Python is **not** “async but faster”.
-
-It gives you a sharper tool:
-
+Free-threaded Python
 - `asyncio` = orchestration + I/O concurrency
 - threads (no-GIL) = real CPU parallelism **when you offload**
 - synchronization = your responsibility (locks / queues / ownership)
 
-If you keep the architecture clean (message passing, bounded concurrency),
-you get speed **without** turning your code into a race-condition museum.
+---
+# Task: async Foodtruck orchestrator
+
+Cook stage has 3 ways to operate: quick async order **(1)**, heavy CPU cook job **(2)**, contact ingredients to order extra spice **(3)**
+
+```python
+order = {"id": i, "item": "smoked_ribs", type: "heavy", "start": time.time()}
+order = {"id": i, "item": "burger", type: "fast", "start": time.time()}
+order = {"id": i, "item": "soup", type: "extra_ing", "start": time.time()}
+```
+"burger" → normal async cook
+"smoked_ribs" → CPU-heavy cook via to_thread
+"soup" → I/O wait, contact ingredients stage to order spice, cont. once ack
+limited number of cooks!

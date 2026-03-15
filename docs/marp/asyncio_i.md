@@ -336,7 +336,7 @@ async for number in async_range(5):
 ```
 
 ---
-# Tasks - async foodtruck
+# Task: async foodtruck
 
 - Implement **async** version of the foodtruck 
     - We don't want to wait for the stage to finish
