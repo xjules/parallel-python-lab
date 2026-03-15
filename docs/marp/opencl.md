@@ -279,20 +279,16 @@ Strategy:
 # Example Reduction Kernel
 
 ```c
-__kernel void sum(global int *X,
-                  local int *sdata,
-                  global int *Y)
-{
+__kernel void sum(__global int *X,
+                  __local int *sdata,
+                  __global int *Y) {
     int tid = get_local_id(0);
     int i = get_global_id(0);
     sdata[tid] = X[i];
     barrier(CLK_LOCAL_MEM_FENCE);
-
-    for(int s = get_local_size(0)/2; s > 0; s >>= 1)
-    {
+    for(int s = get_local_size(0)/2; s > 0; s >>= 1) {
         if(tid < s)
             sdata[tid] += sdata[tid+s];
-
         barrier(CLK_LOCAL_MEM_FENCE);
     }
     if(tid == 0)
@@ -300,45 +296,17 @@ __kernel void sum(global int *X,
 }
 ```
 ---
-# Example Reduction Kernel - explained
+# Reduction Kernel - explained
 
-![alt text](fig/reduction.png)
-
----
-
-# Particle Simulation
-
-Particle systems are another good GPU target.
-
-Each particle has:
-
-- position
-- velocity
-- weight
-
-Update rule:
-
-```
-v(i+1) = v(i) + f(...)
-p(i+1) = p(i) + v(i+1)
-```
-
-Thousands of particles can update in parallel.
+![width:900px](fig/reduction.png)
 
 ---
-
-# PyOpenCL
+# Summary
 
 PyOpenCL provides a Python interface for OpenCL.
-
-Advantages:
-
 - Python host code
 - GPU kernels in OpenCL C
 - Easy memory management
-
-Important features:
-
 - asynchronous execution
 - event objects
 - non‑blocking kernel launches
