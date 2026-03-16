@@ -56,11 +56,10 @@ def main():
     src_buf = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=grid)
     dst_buf = cl.Buffer(ctx, mf.READ_WRITE, grid.nbytes)
 
-    # matplotlib setup
     plt.ion()
     fig, ax = plt.subplots()
     im = ax.imshow(grid, cmap="binary", interpolation="nearest")
-    ax.set_title("Game of Life (PyOpenCL)")
+    ax.set_title("Game of Life")
     ax.set_axis_off()
 
     for _ in range(steps):
