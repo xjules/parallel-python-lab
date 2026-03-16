@@ -17,10 +17,8 @@ class Stage:
 
     async def run(self):
         while True:
+            # TODO make it exit
             order = await self.in_q.get()
-            # if order is None:
-            #     await self.out_q.put(None)
-            #     return
             await self.process(order)
             order[self.name] = "ok"
             await self.out_q.put(order)
@@ -38,7 +36,6 @@ class OrderStage:
             print(f"new {order=}")
             await self.out_q.put(order)
             await asyncio.sleep(random.random() * 4)
-        # await self.out_q.put(None)
 
 
 class Customer:
@@ -47,14 +44,10 @@ class Customer:
 
     async def run(self):
         while True:
+            # TODO make it exit
             order = await self.in_q.get()
-            # if order is None:
-            #     return
             dt = time.time() - order["start"]
             print(f"order {order['id']} took {dt:.2f}s")
-
-
-N_workers = 3
 
 
 async def main():
