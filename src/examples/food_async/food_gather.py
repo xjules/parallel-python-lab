@@ -10,22 +10,26 @@ class Stage:
         self.out_q = out_q
         self.seconds = seconds
 
+    async def process(self, order):
+        print(f"{self.name} working on order {order['id']}")
+        await asyncio.sleep(self.seconds + random.random() * self.seconds)
+        print(f"{self.name}: order {order['id']}")
+
     async def run(self):
         while True:
             order = await self.in_q.get()
-            if order is None:
-                await self.out_q.put(None)
-                return
-            print(f"{self.name} working on order {order['id']}")
-            await asyncio.sleep(self.seconds + random.random() * self.seconds)
+            # if order is None:
+            #     await self.out_q.put(None)
+            #     return
+            await self.process(order)
             order[self.name] = "ok"
             await self.out_q.put(order)
 
 
-class Producer:
+class OrderStage:
     def __init__(self, out_q, n_orders=10):
         self.out_q = out_q
-        self.menu = ["🌭 hotdog", "🍔 burger", "🍦 ice-cream"]
+        self.menu = ["hotdog", "burger", "ice-cream"]
         self.n_orders = n_orders
 
     async def run(self):
@@ -34,7 +38,7 @@ class Producer:
             print(f"new {order=}")
             await self.out_q.put(order)
             await asyncio.sleep(random.random() * 4)
-        await self.out_q.put(None)
+        # await self.out_q.put(None)
 
 
 class Customer:
@@ -44,10 +48,10 @@ class Customer:
     async def run(self):
         while True:
             order = await self.in_q.get()
-            if order is None:
-                return
+            # if order is None:
+            #     return
             dt = time.time() - order["start"]
-            print(f"✅ order {order['id']} took {dt:.2f}s")
+            print(f"order {order['id']} took {dt:.2f}s")
 
 
 N_workers = 3
@@ -59,7 +63,7 @@ async def main():
     q_cook = asyncio.Queue()
     q_prep = asyncio.Queue()
 
-    producer = Producer(q_order)
+    producer = OrderStage(q_order)
     ingredients = Stage("ingredients", q_order, q_ing, 3)
     cook_workers = Stage("cook", q_ing, q_cook, 3)
     prep_workers = Stage("prepare", q_cook, q_prep, 3)
