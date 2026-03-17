@@ -58,13 +58,6 @@ Advantages:
 - Access to GPU acceleration
 - Massive performance gains for heavy computation
 
-Typical domains:
-
-- Scientific computing
-- Simulation
-- Signal processing
-- Rendering
-
 ---
 
 # Example Application Domains
