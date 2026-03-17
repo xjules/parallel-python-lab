@@ -8,7 +8,7 @@
     - synchronous execution
     - asynchronous vs. parallel execution
     - the Global Interpreter Lock (GIL)
-- :books: asyncio - part I. (9:30-11:30)
+- :books: asyncio - part I. (9:30-11:15)
     - fundamentals
     - coroutines, awaitables
     - scheduling
@@ -16,7 +16,7 @@
 - :books: asyncio - part II. (12:00-13:15)
     - async patterns
     - async in IO bound problems
-- :books: parallel python - part I. (13:30-14:50)
+- :books: parallel python - part I. (13:30-14:45)
     - free threaded python (no GIL)
     - across cores, loops and threads
 - :books: parallel python - part II. (15:00-16:30)
