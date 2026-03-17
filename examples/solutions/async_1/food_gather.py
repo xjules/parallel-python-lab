@@ -3,17 +3,25 @@ import random
 import time
 
 
+
+STAGE_DURATIONS = {
+    "order": 1,
+    "ingredients": 2,
+    "cook": 3,
+    "prepare": 1,
+    "customer": 0,
+}
+
 class Stage:
-    def __init__(self, name, in_q, out_q, seconds):
+    def __init__(self, name, in_q, out_q):
         self.name = name
         self.in_q = in_q
         self.out_q = out_q
-        self.seconds = seconds
 
     async def process(self, order):
+        # TODO introduce random exception for the cook stage
         print(f"{self.name} working on order {order['id']}")
-        await asyncio.sleep(self.seconds + random.random() * self.seconds)
-        print(f"{self.name}: order {order['id']}")
+        await asyncio.sleep(STAGE_DURATIONS[self.name])
 
     async def run(self):
         while True:
@@ -35,7 +43,7 @@ class OrderStage:
             order = {"id": i, "item": random.choice(self.menu), "start": time.time()}
             print(f"new {order=}")
             await self.out_q.put(order)
-            await asyncio.sleep(random.random() * 4)
+            await asyncio.sleep(STAGE_DURATIONS["order"])
 
 
 class Customer:
@@ -57,9 +65,9 @@ async def main():
     q_prep = asyncio.Queue()
 
     producer = OrderStage(q_order)
-    ingredients = Stage("ingredients", q_order, q_ing, 3)
-    cook_workers = Stage("cook", q_ing, q_cook, 3)
-    prep_workers = Stage("prepare", q_cook, q_prep, 3)
+    ingredients = Stage("ingredients", q_order, q_ing)
+    cook_workers = Stage("cook", q_ing, q_cook)
+    prep_workers = Stage("prepare", q_cook, q_prep)
     customer = Customer(q_prep)
 
     await asyncio.gather(

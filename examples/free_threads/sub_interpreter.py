@@ -5,8 +5,7 @@ import _interpreters
 # 1. Create a new, isolated subinterpreter
 interp_id = _interpreters.create()
 
-# 2. Define the code to run (must be a string for the low-level API)
-# This code sets a variable that only exists inside the subinterpreter.
+# 2. Define the code to run, with a variable that only exists in the subinterpreter
 code = """
 import os
 val = "Hello from Subinterpreter!"

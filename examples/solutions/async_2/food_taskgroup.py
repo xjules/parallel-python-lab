@@ -2,18 +2,23 @@ import asyncio
 import random
 import time
 
+STAGE_DURATIONS = {
+    "order": 1,
+    "ingredients": 2,
+    "cook": 3,
+    "prepare": 1,
+    "customer": 0,
+}
 
 class Stage:
-    def __init__(self, name, in_q, out_q, seconds):
+    def __init__(self, name, in_q, out_q):
         self.name = name
         self.in_q = in_q
         self.out_q = out_q
-        self.seconds = seconds
 
     async def process(self, order):
         print(f"{self.name} working on order {order['id']}")
-        await asyncio.sleep(self.seconds + random.random() * self.seconds)
-        print(f"{self.name}: order {order['id']}")
+        await asyncio.sleep(STAGE_DURATIONS[self.name])
 
     async def handle(self, order):
         await self.process(order)
@@ -43,19 +48,17 @@ class Stage:
 
 
 class CookStage(Stage):
-    def __init__(self, name, in_q, out_q, seconds, sem):
-        super().__init__(name, in_q, out_q, seconds)
+    def __init__(self, name, in_q, out_q, sem):
+        super().__init__(name, in_q, out_q)
         self.sem = sem
 
     async def process(self, order):
         async with self.sem:
             print(f"{self.name} working on order {order['id']}")
-            await asyncio.sleep(self.seconds + random.random() * self.seconds)
+            await asyncio.sleep(STAGE_DURATIONS[self.name])
 
             if random.random() < 0.25:
                 raise RuntimeError("burned order")
-
-            print(f"{self.name}: order {order['id']}")
 
 
 class OrderStage:
@@ -69,7 +72,7 @@ class OrderStage:
             order = {"id": i, "item": random.choice(self.menu), "start": time.time()}
             print(f"new {order=}")
             await self.out_q.put(order)
-            await asyncio.sleep(random.random() * 4)
+            await asyncio.sleep(STAGE_DURATIONS["order"])
 
         await self.out_q.put(None)
 
@@ -105,9 +108,9 @@ async def main():
 
     producer = OrderStage(q_order, n_orders=10)
 
-    ingredients = Stage("ingredients", q_order, q_ing, 1.5)
-    cooks = [CookStage("cook", q_ing, q_cook, 2.0, cook_sem) for _ in range(n_cooks)]
-    prep = Stage("prepare", q_cook, q_prep, 1.0)
+    ingredients = Stage("ingredients", q_order, q_ing)
+    cooks = [CookStage("cook", q_ing, q_cook, cook_sem) for _ in range(n_cooks)]
+    prep = Stage("prepare", q_cook, q_prep)
 
     customer = Customer(q_prep)
 

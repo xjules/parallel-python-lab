@@ -5,7 +5,14 @@ class: invert
 paginate: true
 size: 16:9
 ---
+# Julius Parulek
+DSD SOFTWARE ENGINEERING 2
 
+SCOUT
+
+**ERT, FMU**
+
+---
 # Execution Model
 
 Understand the execution model
@@ -53,7 +60,7 @@ The program executes **top → bottom**.
 
 ```python
 for i in range(5):
-    order = producer()
+    order = order_stage()
     order = ingredients(order)
     order = cook(order)
     order = prepare(order)
@@ -181,6 +188,7 @@ For CPU-bound Python code, the GIL remains locked
 | I/O with blocking libraries | Threads |
 | Heavy CPU computation | Multiprocessing |
 | CPU scaling | Free-threaded Python |
+| Big data / CPU scaling | OpenCL |
 
 ---
 
@@ -195,8 +203,9 @@ For CPU-bound Python code, the GIL remains locked
 
 # Tasks - sync foodtruck
 - Add Timing Information
-    - Understand where time is spent.
-    - Measure time spent in each stage (ingredients, cook, prepare) and total time per order. Print the timings when an order is completed.
+    - Understand durations?
+    - What is the total time?
+    - What is the idle time per stage?
 - Process Multiple Orders
-    - See how blocking affects throughput.
-    - Increase the number of orders (e.g. from 5 to 20). Add a timestamp before starting each order.
+    - How blocking are we really?
+    - What happens if we increase the number of orders (e.g. from 5 to 20)?

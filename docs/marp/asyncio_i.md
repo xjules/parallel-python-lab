@@ -7,11 +7,15 @@ size: 16:9
 ---
 # Asyncio
 
+introduced in 2014
 standard python library to write concurrent code
+
 
 - Single-threaded
 - Cooperative multitasking
 - Tasks explicitly yield control
+
+*Matthew Fowler, Python concurrency with asyncio*
 
 ---
 # Coroutines
@@ -42,7 +46,7 @@ The Suspension Point - used to pause the current coroutine until the awaited ope
 # Tasks
 Represents the actual **concurrency**
 
-- Submits a coroutine to the event loop in the [background](../../examples/async_demo/my_job.py)
+- Submits a coroutine to the event loop in the [background](../../examples/async_demo/sleep_job.py)
   - Scheduled and starts immediately
   - Runs concurrently
 ``` python
@@ -304,8 +308,6 @@ asynchronous version of the with statement
 - `__aenter__` and `__aexit__` 
 - Non-blocking cleanup
 
-### Note: implement async with foodtruck:
-
 ---
 
 # Async context manager - alternative
@@ -341,7 +343,7 @@ async for number in async_range(5):
 - Implement **async** version of the foodtruck 
     - We don't want to wait for the stage to finish
     - All stages should be async. 
-    - Try to use asyncio.gather(...). 
-    - Each task should exit gracefully. We don't want Ctrl+C
-- Implement **exception** handling
-- Introduce random exception to the cook stage (random chance order gets burned) and handle it
+    - All stages should exit gracefully. We don't want Ctrl+C
+- Extra: Implement **exception** handling
+    - Introduce random exception to the cook stage (random chance order gets burned) and handle it
+- Extra: `async with foodtruck:`
