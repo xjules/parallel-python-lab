@@ -28,16 +28,16 @@
 :warning: Prerequisites
 Participants must have the following installed before the workshop:
 
-uv environment manager with support for Python 3.13t (free-threaded Python)
-Ability to create a Python environment using:
+**uv** environment manager with support for Python 3.13t (free-threaded Python).
+Then you should create a Python environment using:
 ```
 uv venv .venv-async --python 3.13t
 source .venv-async/bin/activate
 uv pip install aiofiles
 ```
 
-:starwars-baby-yoda-sip: For the opencl session:
-OpenCL drivers installed for either CPU or GPU
+For the opencl session:
+OpenCL drivers installed for either CPU or GPU.
 Verify OpenCL availability with:
 ```
 uv venv .venv-opencl --python 3.13
