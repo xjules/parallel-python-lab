@@ -42,7 +42,7 @@ Verify OpenCL availability with:
 ```
 uv venv .venv-opencl --python 3.13
 source .venv-opencl/bin/activate
-uv pip install numpy matplotlib pyopencl
+uv pip install numpy matplotlib pillow pyopencl
 python -c "import pyopencl as cl; print(cl.get_platforms())"
 ```
 An example of the output:

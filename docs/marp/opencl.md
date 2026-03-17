@@ -75,9 +75,9 @@ OpenCL is commonly used for:
 
 # OpenCL Programming Model
 
-**Setup**: Devices, Contexts, Command Queues
+**Setup**: [Devices](../../examples/opencl_demo/basics.py), Contexts, Command Queues
 
-**Memory**: Buffers, Images
+**Memory**: Buffers, [Images](../../examples/opencl_demo/image.py)
 
 **Execution**: Programs, Kernels
 
@@ -117,9 +117,9 @@ for(int i=0;i<n;i++)
 ```
 ```c
 // parallel
-kernel void mul(global const float *a,
-                   global const float *b,
-                   global float *result) {
+kernel void mul(__global const float *a,
+                __global const float *b,
+                __global float *result) {
     int id = get_global_id(0);
     result[id] = a[id] * b[id];
 }
