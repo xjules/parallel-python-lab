@@ -53,6 +53,7 @@ def main():
     program = cl.Program(ctx, KERNEL).build()
 
     mf = cl.mem_flags
+    # TODO use cl.Image2d instead of buffers for better performance
     src_buf = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=grid)
     dst_buf = cl.Buffer(ctx, mf.READ_WRITE, grid.nbytes)
 
@@ -62,6 +63,9 @@ def main():
     ax.set_title("Game of Life")
     ax.set_axis_off()
 
+    # TODO very advanced!
+    # Show directly the OpenCL buffer without copying back to host memory each step!
+    # ModernGL
     for _ in range(steps):
         program.game_of_life(
             queue,
