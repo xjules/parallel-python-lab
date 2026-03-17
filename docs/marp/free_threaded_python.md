@@ -91,18 +91,18 @@ GIL
 - thread offload helps mostly for I/O or C-extensions releasing GIL  
 
 No-GIL
-- thread offload can speed up **pure Python CPU loops**
+- thread offload can speed up **CPU heavy Python code**
 
 ---
 # Async with CPU bound work
 
+[Example](../../examples/async_demo/ft_job.py)
 ```python
 def cpu_work(n):
     s = 0
     for i in range(n):
         s += i
     return s
-
 async def main():
     results = await asyncio.gather(
         asyncio.to_thread(cpu_work, 50_000_000),
@@ -243,5 +243,5 @@ order = {"id": i, "item": "soup", type: "extra_ing", "start": time.time()}
 ```
 "burger" → normal async cook
 "smoked_ribs" → CPU-heavy cook via to_thread
-"soup" → I/O wait, contact ingredients stage to order spice, cont. once ack
+"soup" → I/O wait, contact ingredients stage to order spice - continue once ack
 limited number of cooks!

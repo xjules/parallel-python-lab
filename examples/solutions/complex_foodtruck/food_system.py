@@ -11,17 +11,24 @@ def heavy_cook_work(order, n) -> int:
     return order
 
 
+STAGE_DURATIONS = {
+    "order": 1,
+    "ingredients": 2,
+    "cook": 3,
+    "prepare": 1,
+    "customer": 0,
+}
+
 class Stage:
-    def __init__(self, name, in_q, out_q, seconds):
+    def __init__(self, name, in_q, out_q):
         self.name = name
         self.in_q = in_q
         self.out_q = out_q
-        self.seconds = seconds
 
     async def process(self, order):
         print(f"{self.name} working on order {order['id']}")
-        await asyncio.sleep(self.seconds + random.random() * self.seconds)
-        print(f"{self.name}: order {order['id']}")
+        await asyncio.sleep(STAGE_DURATIONS[self.name])
+
 
     async def handle(self, order):
         await self.process(order)
@@ -49,15 +56,15 @@ class IngredientsStage(Stage):
 
         if order.get("kind") == "extra_spice_request":
             print(f"{self.name} ordering extra spice for order {order['id']}")
-            await asyncio.sleep(self.seconds + random.random() * self.seconds)
+            await asyncio.sleep(STAGE_DURATIONS[self.name])
             order["spice_ready"] = True
             print(f"{self.name}: spice ready for order {order['id']}")
             await self.out_q.put(order)
 
 
 class CookStage(Stage):
-    def __init__(self, name, in_q, out_q, seconds, sem, ingredients_req_q):
-        super().__init__(name, in_q, out_q, seconds)
+    def __init__(self, name, in_q, out_q, sem, ingredients_req_q):
+        super().__init__(name, in_q, out_q)
         self.sem = sem
         self.ingredients_req_q = ingredients_req_q
 
@@ -72,13 +79,13 @@ class CookStage(Stage):
                     await self.ingredients_req_q.put(order)
                     return
                 else:
-                    order["kind"] = "fast"
+                    order["type"] = "fast"
 
             if order["type"] == "fast":
-                await asyncio.sleep(self.seconds + random.random() * self.seconds)
-
+                await asyncio.sleep(STAGE_DURATIONS[self.name])
             elif order["type"] == "heavy":
                 # TODO compare GIL with No GIL python!
+                # TODO how to cancel heavy_cook_work if it takes too long?
                 order = await asyncio.to_thread(heavy_cook_work, order, 8_000_000)
                 # TODO do something else instead!
             else:
@@ -120,7 +127,6 @@ class OrderStage:
 class Customer:
     def __init__(self, in_q):
         self.in_q = in_q
-        self.done = 0
 
     async def run(self):
         while True:
@@ -146,17 +152,17 @@ async def main():
     cook_sem = asyncio.Semaphore(n_stations)
 
     producer = OrderStage(q_order, n_orders=10)
-    ingredients = IngredientsStage("ingredients", q_order, q_cook, 1.0)
+    ingredients = IngredientsStage("ingredients", q_order, q_cook)
 
     cooks = [
-        CookStage("cook", q_cook, q_prep, 2.0, cook_sem, q_order)
+        CookStage("cook", q_cook, q_prep, cook_sem, q_order)
         for _ in range(n_cooks)
     ]
-    prep = Stage("prepare", q_prep, q_done, 1.0)
+    prep = Stage("prepare", q_prep, q_done)
     customer = Customer(q_done)
 
     async with asyncio.TaskGroup() as tg:
-        # TODO make gracefull shutdown
+        # TODO make graceful shutdown
         tg.create_task(producer.run())
         tg.create_task(ingredients.run())
         tg.create_task(prep.run())
