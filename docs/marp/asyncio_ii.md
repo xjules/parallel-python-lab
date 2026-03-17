@@ -314,14 +314,13 @@ I/O-bound
 → asyncio / async frameworks
 
 ---
-# Task: foodtruck – Pipeline System
+# Task: foodtruck – Refactor
 
-Refactor the async foodtruck into a **pipeline architecture**
-
-- Orde Queue with **limited size**
-- Use **asyncio.Queue** for order flow
+- Order Queue with **limited size** and use **asyncio.PriorityQueue**
 - Implement a **worker pool** for cooks (multiple cooks allowed)
 - Use **asyncio.Semaphore** to limit cooking stations
-- Introduce random cooking failures (burned orders)
-- Handle exceptions without crashing the system
+- Print number of order in the process
+- Introduce random cooking time
+    - if takes longer than 3 secs the cook will burn the order
+    - propagate to consumer and redo!
 - Graceful shutdown
