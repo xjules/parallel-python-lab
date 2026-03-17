@@ -18,8 +18,7 @@ class Stage:
     async def handle(self, order):
         await self.process(order)
         order[self.name] = "ok"
-        if self.out_q is not None:
-            await self.out_q.put(order)
+        await self.out_q.put(order)
 
     async def run(self):
         while True:
@@ -32,6 +31,7 @@ class Stage:
                 return
 
             try:
+                # TODO make if this takes too long, the order failed
                 await self.handle(order)
             except Exception as e:
                 print(f"{self.name} failed on order {order['id']}: {e}")
@@ -96,6 +96,7 @@ async def main():
     n_stations = 2
 
     q_order = asyncio.Queue(maxsize=5)  # limited size
+    # TODO asyncio.Queue vs asyncio.PriorityQueue
     q_ing = asyncio.Queue()
     q_cook = asyncio.Queue()
     q_prep = asyncio.Queue()
@@ -111,7 +112,7 @@ async def main():
     customer = Customer(q_prep)
 
     async with asyncio.TaskGroup() as tg:
-        # TODO print number of orders process
+        # TODO print number of orders in the process
         tg.create_task(producer.run())
         tg.create_task(ingredients.run())
         tg.create_task(prep.run())
