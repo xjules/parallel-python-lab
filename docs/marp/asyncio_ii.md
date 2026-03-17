@@ -195,7 +195,7 @@ Use cases:
 
 ---
 # CPU bound code 
-once started, each [task](../../src/examples/lecture/io_cpu_bound.py) will keep event loop busy
+once started, each [task](../../examples/async_demo/io_cpu_bound.py) will keep event loop busy
 
 ```python
 async def cpu_bound_job(n):

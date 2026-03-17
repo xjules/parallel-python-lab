@@ -42,7 +42,7 @@ The Suspension Point - used to pause the current coroutine until the awaited ope
 # Tasks
 Represents the actual **concurrency**
 
-- Submits a coroutine to the event loop in the [background](../../src/examples/sleep_job/my_job.py)
+- Submits a coroutine to the event loop in the [background](../../examples/async_demo/my_job.py)
   - Scheduled and starts immediately
   - Runs concurrently
 ``` python

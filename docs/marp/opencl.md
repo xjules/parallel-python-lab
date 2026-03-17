@@ -134,7 +134,7 @@ kernel void mul(global const float *a,
 ---
 # Async execution
 
-Enqueuing commands in queue return Events that can be awaited
+Enqueuing commands in queue return Events that can be [awaited]((../../examples/opencl_demo/memory.py) )
 - `.wait()`
 
 ```python

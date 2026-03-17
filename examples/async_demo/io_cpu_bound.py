@@ -22,13 +22,18 @@ async def main_CPU_bound():
     print(f"Result 2: {result2}")
 
 
+# TODO to create the two large files for testing:
+# dd if=/dev/zero of=file1 bs=1M count=10240
+# dd if=/dev/zero of=file2 bs=1M count=10240
+
+
 async def main_disk_read():
     async def read_file(path):
         with open(path, "rb") as f:
             return f.read()
 
-    t1 = asyncio.create_task(read_file("file1.txt"))
-    t2 = asyncio.create_task(read_file("file2.txt"))
+    t1 = asyncio.create_task(read_file("file1"))
+    t2 = asyncio.create_task(read_file("file2"))
 
     await asyncio.gather(t1, t2)
 
@@ -43,8 +48,8 @@ async def main_disk_read_to_thread():
         content = await asyncio.to_thread(read_file, path)
         print(f"read {len(content)} characters from {path}")
 
-    t1 = asyncio.create_task(read_task("file1.txt"))
-    t2 = asyncio.create_task(read_task("file2.txt"))
+    t1 = asyncio.create_task(read_task("file1"))
+    t2 = asyncio.create_task(read_task("file2"))
 
     await asyncio.gather(t1, t2)
 
@@ -60,8 +65,8 @@ async def main_disk_read_run_in_executor():
         content = await loop.run_in_executor(None, read_file, path)
         print(f"read {len(content)} characters from {path}")
 
-    t1 = asyncio.create_task(read_task("file1.txt"))
-    t2 = asyncio.create_task(read_task("file2.txt"))
+    t1 = asyncio.create_task(read_task("file1"))
+    t2 = asyncio.create_task(read_task("file2"))
 
     await asyncio.gather(t1, t2)
 
@@ -76,8 +81,8 @@ async def main_disk_read_with_aiofiles():
         content = await read_file(path)
         print(f"read {len(content)} characters from {path}")
 
-    t1 = asyncio.create_task(read_task("file1.txt"))
-    t2 = asyncio.create_task(read_task("file2.txt"))
+    t1 = asyncio.create_task(read_task("file1"))
+    t2 = asyncio.create_task(read_task("file2"))
 
     await asyncio.gather(t1, t2)
 

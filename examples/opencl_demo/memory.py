@@ -9,7 +9,6 @@ __kernel void test_mem(
 ) {
     int gid = get_global_id(0);
 
-    // IMPORTANT: You must manually fill __local memory inside the kernel
     l_temp[gid] = g_data[gid] + c_val[0];
     
     // Ensure all threads in the group finished writing to local memory
@@ -28,18 +27,19 @@ mf = cl.mem_flags
 h_data = np.array([1, 2, 3, 4], dtype=np.float32)
 h_const = np.array([10], dtype=np.float32)
 
-# --- SENDING DATA ---
-
 # 1. Global: Standard Read/Write buffer
 d_global = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=h_data)
 
 # 2. Constant: Optimized Read-Only buffer
 d_constant = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=h_const)
 
-# 3. Local: No data sent, only the size (4 floats * 4 bytes = 16 bytes)
+# 3. shared mem: No data sent, only the size (4 floats * 4 bytes = 16 bytes)
 d_local = cl.LocalMemory(16)
 
 # Execute Kernel
 prg = cl.Program(ctx, kernel_code).build()
-# Pass them as positional arguments
 prg.test_mem(queue, h_data.shape, None, d_global, d_constant, d_local)
+
+# Read back results
+cl.enqueue_copy(queue, h_data, d_global)
+print("Result after kernel execution:", h_data)
