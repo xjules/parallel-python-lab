@@ -41,8 +41,8 @@ __kernel void game_of_life(
 
 
 def main():
-    width, height = 256, 256
-    steps = 500
+    width, height = 1024, 1024
+    steps = 1500
 
     # random initial grid
     grid = (np.random.rand(height, width) > 0.8).astype(np.uint8)
@@ -67,7 +67,7 @@ def main():
     # Show directly the OpenCL buffer without copying back to host memory each step!
     # ModernGL
     for _ in range(steps):
-        program.game_of_life(
+        prog_event = program.game_of_life(
             queue,
             (width, height),
             None,
@@ -76,8 +76,10 @@ def main():
             np.int32(width),
             np.int32(height),
         )
+          # Wait for kernel to finish
 
         cl.enqueue_copy(queue, grid, dst_buf).wait()
+        prog_event.wait()
         src_buf, dst_buf = dst_buf, src_buf
 
         im.set_data(grid)

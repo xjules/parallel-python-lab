@@ -10,6 +10,9 @@ STAGE_DURATIONS = {
     "customer": 0,
 }
 
+
+global_closed_cooks = 0
+n_cooks = 3
 class Stage:
     def __init__(self, name, in_q, out_q):
         self.name = name
@@ -27,13 +30,19 @@ class Stage:
 
     async def run(self):
         while True:
-            order = await self.in_q.get()
-
-            # TODO this will not handle multiple cooks!
-            if order is None:
-                await self.out_q.put(None)
-                self.in_q.task_done()
+            try:
+                order = await self.in_q.get()
+            except asyncio.QueueShutDown:
+                if self.name == "cook":
+                    global global_closed_cooks
+                    print(f"Closing cook stage {global_closed_cooks}")
+                    global_closed_cooks += 1
+                    if global_closed_cooks == n_cooks:
+                        self.out_q.shutdown()
+                else:
+                    self.out_q.shutdown()
                 return
+
 
             try:
                 # TODO make if this takes too long, the order failed
@@ -57,8 +66,8 @@ class CookStage(Stage):
             print(f"{self.name} working on order {order['id']}")
             await asyncio.sleep(STAGE_DURATIONS[self.name])
 
-            if random.random() < 0.25:
-                raise RuntimeError("burned order")
+            # if random.random() < 0.25:
+            #     raise RuntimeError("burned order")
 
 
 class OrderStage:
@@ -73,8 +82,8 @@ class OrderStage:
             print(f"new {order=}")
             await self.out_q.put(order)
             await asyncio.sleep(STAGE_DURATIONS["order"])
-
-        await self.out_q.put(None)
+        print("No more orders, shutting down")
+        self.out_q.shutdown()
 
 
 class Customer:
@@ -83,7 +92,10 @@ class Customer:
 
     async def run(self):
         while True:
-            order = await self.in_q.get()
+            try:
+                order = await self.in_q.get()
+            except asyncio.QueueShutDown:
+                 return
 
             if order is None:
                 self.in_q.task_done()
@@ -93,9 +105,13 @@ class Customer:
             print(f"order {order['id']} took {dt:.2f}s -> {order}")
             self.in_q.task_done()
 
+async def monitor_all_tasks():
+    while True:
+        tasks = asyncio.all_tasks()
+        print(f"Running tasks: {[t.get_name() for t in tasks]}")
+        await asyncio.sleep(1)
 
 async def main():
-    n_cooks = 3
     n_stations = 2
 
     q_order = asyncio.Queue(maxsize=5)  # limited size
@@ -106,7 +122,7 @@ async def main():
 
     cook_sem = asyncio.Semaphore(n_stations)
 
-    producer = OrderStage(q_order, n_orders=10)
+    producer = OrderStage(q_order, n_orders=4)
 
     ingredients = Stage("ingredients", q_order, q_ing)
     cooks = [CookStage("cook", q_ing, q_cook, cook_sem) for _ in range(n_cooks)]
@@ -116,12 +132,13 @@ async def main():
 
     async with asyncio.TaskGroup() as tg:
         # TODO print number of orders in the process
-        tg.create_task(producer.run())
-        tg.create_task(ingredients.run())
-        tg.create_task(prep.run())
-        for w in cooks:
-            tg.create_task(w.run())
-        tg.create_task(customer.run())
+        tg.create_task(producer.run(), name="producer")
+        tg.create_task(ingredients.run(), name="ingredients")
+        tg.create_task(prep.run(), name="prep")
+        for i, w in enumerate(cooks):
+            tg.create_task(w.run(), name=f"cook-{i}")
+        tg.create_task(customer.run(), name="customer")
+        tg.create_task(monitor_all_tasks(), name="monitor")
 
 
 if __name__ == "__main__":

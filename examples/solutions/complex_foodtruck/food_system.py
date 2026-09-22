@@ -1,15 +1,27 @@
 import asyncio
 import random
 import time
+from threading import Event
 
 
-def heavy_cook_work(order, n) -> int:
+
+def heavy_cook_work(order, n, cancel_event) -> int:
     total = 0
     for i in range(n):
+        if cancel_event.is_set():
+            print(f"heavy cook work cancelled for order {order['id']}")
+            return order
         total += i * i
     order["heavy_cook_work"] = total
+    print(f"heavy cook work done for order {order['id']}")
     return order
 
+async def run_func_async(func, order, n, t_event):
+    try:
+        asyncio.to_thread(func, order, n, t_event)
+    except asyncio.CancelledError:
+        t_event.set()
+        print("main task cancelled, but func is still running in thread")    
 
 STAGE_DURATIONS = {
     "order": 1,
@@ -24,6 +36,7 @@ class Stage:
         self.name = name
         self.in_q = in_q
         self.out_q = out_q
+        self.tasks = []
 
     async def process(self, order):
         print(f"{self.name} working on order {order['id']}")
@@ -41,6 +54,7 @@ class Stage:
             if order is None:
                 await self.out_q.put(None)
                 self.in_q.task_done()
+                await asyncio.gather(*[task for _, task in self.tasks])
                 return
 
             await self.handle(order)
@@ -67,6 +81,20 @@ class CookStage(Stage):
         super().__init__(name, in_q, out_q)
         self.sem = sem
         self.ingredients_req_q = ingredients_req_q
+        self.tasks = []
+        self.monitor_task = asyncio.create_task(self.monitor_heavy_tasks())
+
+    async def monitor_heavy_tasks(self):
+        while True:
+            for order, task in self.tasks:
+                if task.done():
+                    print(f"{self.name} heavy task done for order {order['id']}")
+                    result = task.result()
+                    order.update(result)
+                    order["kind"] = "cooked"
+                    await self.out_q.put(order)
+                    self.tasks.remove((order, task))
+            await asyncio.sleep(0.5)
 
     async def handle(self, order):
         async with self.sem:
@@ -86,7 +114,11 @@ class CookStage(Stage):
             elif order["type"] == "heavy":
                 # TODO compare GIL with No GIL python!
                 # TODO how to cancel heavy_cook_work if it takes too long?
-                order = await asyncio.to_thread(heavy_cook_work, order, 8_000_000)
+                # order = await asyncio.to_thread(heavy_cook_work, order, 8_000_000)
+                task = asyncio.create_task(asyncio.to_thread(heavy_cook_work, order, 10**8))
+                self.tasks.append((order, task))
+                print(f"{self.name} started heavy CPU bound work for order {order['id']}")
+                return
                 # TODO do something else instead!
             else:
                 raise RuntimeError(f"unknown order type: {order['type']}")
@@ -141,7 +173,7 @@ class Customer:
 
 
 async def main():
-    n_cooks = 3
+    n_cooks = 1
     n_stations = 2
 
     q_order = asyncio.Queue(maxsize=5)

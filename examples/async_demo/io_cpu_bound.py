@@ -12,9 +12,10 @@ async def main_CPU_bound():
             count += i
         return count
 
+    task_sleep = asyncio.create_task(asyncio.sleep(2))  # 2secs
     task_sum_1 = asyncio.create_task(cpu_bound_job(10**8))
     task_sum_2 = asyncio.create_task(cpu_bound_job(10**8))
-    task_sleep = asyncio.create_task(asyncio.sleep(2))  # 2secs
+    
     result1 = await task_sum_1
     result2 = await task_sum_2
     await task_sleep
@@ -116,5 +117,5 @@ if __name__ == "__main__":
     # run_func_async(main_disk_read)
     # run_func_async(main_disk_read_to_thread)
     # run_func_async(main_disk_read_run_in_executor)
-    # run_func_async(main_disk_read_with_aiofiles)
-    run_func_async(main_loop_signal_handler)
+    run_func_async(main_disk_read_with_aiofiles)
+    # run_func_async(main_loop_signal_handler)

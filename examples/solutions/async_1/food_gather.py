@@ -26,14 +26,21 @@ class Stage:
     async def run(self):
         while True:
             # TODO make it exit
-            order = await self.in_q.get()
+            try:
+                order = await self.in_q.get()
+            except asyncio.QueueShutDown:
+                self.out_q.shutdown()  # propagate end signal
+                break
+            # if order is None:
+            #     await self.out_q.put(None)  # propagate end signal
+            #     break
             await self.process(order)
             order[self.name] = "ok"
             await self.out_q.put(order)
 
 
 class OrderStage:
-    def __init__(self, out_q, n_orders=10):
+    def __init__(self, out_q, n_orders=2):
         self.out_q = out_q
         self.menu = ["hotdog", "burger", "ice-cream"]
         self.n_orders = n_orders
@@ -44,6 +51,9 @@ class OrderStage:
             print(f"new {order=}")
             await self.out_q.put(order)
             await asyncio.sleep(STAGE_DURATIONS["order"])
+        # await self.out_q.put(None)  # signal end of orders\
+        self.out_q.shutdown()  # signal end of orders
+        raise ValueError("Producer done")
 
 
 class Customer:
@@ -52,8 +62,10 @@ class Customer:
 
     async def run(self):
         while True:
-            # TODO make it exit
-            order = await self.in_q.get()
+            try:
+                order = await self.in_q.get()
+            except asyncio.QueueShutDown:
+                break
             dt = time.time() - order["start"]
             print(f"order {order['id']} took {dt:.2f}s")
 

@@ -84,5 +84,5 @@ def run_func_async(func):
 
 if __name__ == "__main__":
     # run_func_async(main_CPU_bound)
-    # run_func_async(main_CPU_bound_message_queue)
-    run_func_async(main_CPU_bound_message_send)
+    run_func_async(main_CPU_bound_message_queue)
+    # run_func_async(main_CPU_bound_message_send)

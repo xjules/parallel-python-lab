@@ -23,6 +23,7 @@ async def main_duration_extended():
     sleep2 = asyncio.create_task(my_job(2))
     sleep3 = asyncio.create_task(my_job(3))
     result1 = await my_job(2)
+    result1 = await my_job(2)
     result2 = await sleep2
     result3 = await sleep3
     print(result1)
@@ -57,8 +58,8 @@ async def main_cancel_2():
     await asyncio.sleep(1)
     if not sleep2.done():
         sleep2.cancel()
-    result = await sleep2
-    print(result)
+    # result = await sleep2
+    # print(result)
 
 
 async def main_wait_for():
@@ -71,6 +72,7 @@ async def main_wait_for():
         await asyncio.wait_for(sleep2, timeout=1)
     except asyncio.exceptions.TimeoutError:
         print(f"Task {sleep2.cancelled()=}")
+    await sleep2
 
 
 async def main_wait_for_with_shield():
@@ -89,17 +91,22 @@ async def main_wait_for_with_shield():
 async def main_future():
     async def my_job(sleep_time, future):
         await asyncio.sleep(sleep_time)
-        future.set_result(sleep_time)
+        if not future.done():
+            print(f"Setting future result to {sleep_time}")
+            future.set_result(sleep_time)
+        else:
+            print(f"Future already done with result {future.result()}")
         await asyncio.sleep(1.0)
 
     future = asyncio.Future()
     sleep_task = asyncio.create_task(my_job(3, future))
+    sleep_task2 = asyncio.create_task(my_job(2, future))
     print(f"Future done: {future.done()}")
     value = await future
     print(f"Future done: {future.done()}")
     print(f"Future value: {value}")
     await sleep_task
-
+    await sleep_task2
 
 async def main_gather():
     future = asyncio.Future()
@@ -125,7 +132,7 @@ async def main_gather_invalide_state():
         return f"Sleeping for {sleep_time} seconds"
 
     sleep2 = asyncio.create_task(my_job(2))
-    results = await asyncio.gather(my_job(3), sleep2, future, return_exceptions=True)
+    results = await asyncio.gather(my_job(3), sleep2, future)
     print(results)
 
 
@@ -154,10 +161,11 @@ def run_func_async(func):
 if __name__ == "__main__":
 
     # run_func_async(main_duration)
+    # run_func_async(main_duration_extended)
     # run_func_async(main_cancel_1)
     # run_func_async(main_cancel_2)
     # run_func_async(main_wait_for)
     # run_func_async(main_wait_for_with_shield)
     # run_func_async(main_future)
-    # run_func_async(main_gather)
-    run_func_async(main_taskgroup)
+    run_func_async(main_gather_invalide_state)
+    # run_func_async(main_taskgroup)
