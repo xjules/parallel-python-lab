@@ -602,10 +602,6 @@ For each workload, choose one:
 | Mixed I/O and CPU | async orchestration plus workers |
 | Shared state | queues, ownership, and explicit synchronization |
 
-The right choice is not simply “use async.”
-
-It is “where does this program spend its time?”
-
 ---
 
 # Rules to take home
