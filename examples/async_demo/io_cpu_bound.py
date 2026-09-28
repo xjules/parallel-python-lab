@@ -6,21 +6,29 @@ import aiofiles
 
 
 async def main_CPU_bound():
+    async def my_job(sleep_time):
+        await asyncio.sleep(sleep_time)
+        return f"Sleeping for {sleep_time} seconds"
+
     async def cpu_bound_job(n):
         count = 0
+        start = time.time()
         for i in range(n):
             count += i
+        end = time.time()
+        print(f"count execution time: {end - start:.2f} seconds")
         return count
 
-    task_sleep = asyncio.create_task(asyncio.sleep(2))  # 2secs
     task_sum_1 = asyncio.create_task(cpu_bound_job(10**8))
     task_sum_2 = asyncio.create_task(cpu_bound_job(10**8))
-    
+    task_sleep = asyncio.create_task(my_job(2))
+
     result1 = await task_sum_1
     result2 = await task_sum_2
-    await task_sleep
+    result_sleep = await task_sleep
     print(f"Result 1: {result1}")
     print(f"Result 2: {result2}")
+    print(f"Sleep result: {result_sleep}")
 
 
 # TODO to create the two large files for testing:
@@ -113,9 +121,9 @@ def run_func_async(func):
 
 
 if __name__ == "__main__":
-    # run_func_async(main_CPU_bound)
+    run_func_async(main_CPU_bound)
     # run_func_async(main_disk_read)
     # run_func_async(main_disk_read_to_thread)
     # run_func_async(main_disk_read_run_in_executor)
-    run_func_async(main_disk_read_with_aiofiles)
+    # run_func_async(main_disk_read_with_aiofiles)
     # run_func_async(main_loop_signal_handler)

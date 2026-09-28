@@ -6,38 +6,27 @@ paginate: true
 size: 16:9
 ---
 
+<style>
+section pre {
+    font-size: 0.72em;
+    line-height: 1.15;
+}
+</style>
+
 # From Concurrency to Full Parallelism in Modern Python
 
 ## Choosing the right execution model
 
-### An interactive tour of concurrency and parallelism
 
 Julius Parulek
 
-<!-- 40 minutes. The format is always: predict, vote, run, explain. -->
-
 ---
 
-# How this talk works
+# Models
 
-For every example:
+> Why did the async function break up with the synchronous function? Because it was tired of being blocked.
 
-1. **Predict** the output or duration
-2. **Vote**: A, B, or C
-3. **Run** the example
-4. **Explain** the execution model
-
-Do not optimize for getting every answer right.
-
-Optimize for finding the rule that predicts the next one.
-
----
-
-# The running idea
-
-> When one job is waiting, what else can Python do?
-
-We will move through four models:
+execution models:
 
 - synchronous execution
 - asynchronous concurrency
@@ -46,55 +35,19 @@ We will move through four models:
 
 ---
 
-# The food truck
+# Blocking Behavior
 
-![Foodtruck](fig/ft01.png)
-
-Five customers arrive.
-
-Each order goes through:
-
-```text
-order -> ingredients -> cook -> prepare -> customer
-```
-
-How long will five orders take?
-
-- A: about 8 seconds
-- B: about 40 seconds
-- C: it depends only on the number of CPU cores
-
----
-
-# Watch the pipeline
-
-![Foodtruck](fig/ft02.png)
+In synchronous programs:
 
 ```python
-for order_id in range(5):
-    order = order_stage(order_id)
-    order = ingredients(order)
-    order = cook(order)
-    order = prepare(order)
-    customer(order)
+load_data()   # waits
+compute()     # waits
+save_data()   # waits
 ```
 
-Run: [`food_sync.py`](../../examples/food_sync/food_sync.py)
+Every step **owns the thread** until it returns.
 
----
-
-# Sequential execution
-
-![Foodtruck](fig/ft06.png)
-
-One order owns the thread until its stage returns.
-
-```text
-one order: 1 + 2 + 3 + 1 = 7 seconds
-five orders: 5 x 7 = 35 seconds
-```
-
-The machine is often waiting, but the program has no other work to schedule.
+This model is simple, but inefficient for many workloads.
 
 ---
 
@@ -106,49 +59,72 @@ Which statement is correct?
 - B. Concurrency is overlapping progress; parallelism is simultaneous execution
 - C. Parallelism works on only one CPU core
 
-Take 20 seconds. Explain your choice to someone nearby.
-
 ---
 
-# Two kinds of waiting
+# Understanding the Bottlenecks
 
-## I/O-bound
-
-The program waits for a network, disk, database, or timer.
-
-## CPU-bound
-
-The program spends its time executing calculations.
-
-Which workload should benefit most from `asyncio`?
+Which workload should benefit most from `concurrency`?
 
 - A: 10,000 HTTP requests
-- B: two pure-Python image calculations
-- C: neither
+- B: 10,000 image processing
 
 ---
 
-# The GIL
+# I/O-Bound vs CPU-bound Workloads
 
-The Global Interpreter Lock means standard CPython generally allows only one
-thread to execute Python bytecode at a time.
+In I/O Bound program spends most time **waiting** for external systems:
+- These workloads benefit from **concurrency**
+- **asyncio**, threading - **GIL**
 
-On ordinary CPython, will two Python threads make this faster?
-
-```python
-def work():
-    total = 0
-    for _ in range(10**8):
-        total += 1
-```
-
-- A: usually yes
-- B: usually no for pure Python CPU work
-- C: only if the function is declared `async`
+In CPU-Bound program spends most time **computing**:
+- These workloads benefit from **parallelism**
+- multiprocessing or **free-threaded Python**
 
 ---
 
-# Asyncio: the first surprise
+# GIL in standard CPython
+
+In the standard CPython build, the Global Interpreter Lock allows only one
+thread at a time to execute Python bytecode in an interpreter.
+
+    Will two Python threads make this faster?
+    ```python
+    def work():
+        total = 0
+        for _ in range(10**8):
+            total += 1
+    ```
+    - A: yes
+    - B: no
+    - C: only if the function is declared `async`
+
+
+
+---
+
+# GIL in standard CPython - why?
+
+GIL exists primarily because of how **CPython manages memory**
+
+**Reference counting** tracks how many references an object has; when the count
+reaches zero, the object can be deallocated. The GIL historically made this
+bookkeeping simpler by preventing simultaneous bytecode execution in an
+interpreter.
+
+---
+
+# GIL in standard CPython - when?
+
+For CPU-bound Python code, the GIL remains locked
+- This makes standard multithreading ineffective for speeding up CPU-bound tasks
+
+The GIL is also released around many blocking **I/O operations**.
+
+- **Asyncio** to handle many I/O-bound tasks concurrently
+
+---
+
+# Asyncio: built-in library to write concurrent code
 
 ```python
 async def greet():
@@ -159,41 +135,37 @@ print("finished")
 ```
 
 What is printed?
-
 - A: `hello`, then `finished`
 - B: `finished`, and possibly a warning
 - C: nothing
 
 ---
 
-# `async def` is not execution
+# Coroutines
 
-Calling an async function creates a **coroutine object**.
-
-It runs only when it is awaited or scheduled as a task.
+`async def` creates a coroutine - It runs only when it is awaited or scheduled as a task.
 
 ```python
 await greet()
-```
-
-or:
-
-```python
+# or
 task = asyncio.create_task(greet())
 ```
 
-`async` describes a possible suspension point. It does not promise parallelism.
+`await` - pause the current coroutine until the awaited operation finishes
+
+**Yielding Control** - when we `await`, we tell the Event Loop: 
+    - _"I am still waiting; go ahead and run something else in the meantime"_
 
 ---
 
-# Two sleeps
+# The sleep job
 
 ```python
-async def job(seconds):
+async def sleep_job(seconds):
     await asyncio.sleep(seconds)
 
-task_a = asyncio.create_task(job(2))
-task_b = asyncio.create_task(job(3))
+task_a = asyncio.create_task(sleep_job(2))
+task_b = asyncio.create_task(sleep_job(3))
 
 await task_a
 await task_b
@@ -219,19 +191,15 @@ task B:     [===============]
 
 **Answer: approximately 3 seconds.**
 
-Run: [`sleep_job.py`](../../examples/async_demo/sleep_job.py)
-
 ---
 
-# Mixed awaits
-
-From [`execution_ex.md`](execution_ex.md):
+# Mixed awaits - I.
 
 ```python
-sleep2 = asyncio.create_task(my_job(2))
-sleep3 = asyncio.create_task(my_job(3))
+sleep2 = asyncio.create_task(sleep_job(2))
+sleep3 = asyncio.create_task(sleep_job(3))
 
-await my_job(2)
+await sleep_job(2)
 await sleep2
 await sleep3
 ```
@@ -240,28 +208,32 @@ What is the total duration?
 
 - A: about 2 seconds
 - B: about 3 seconds
-- C: about 7 seconds
+- C: about 5 seconds
 
 ---
 
-# The task was already running
+# Mixed awaits - II.
 
-While the direct `await my_job(2)` is waiting:
+```python
+sleep2 = asyncio.create_task(sleep_job(2))
+sleep3 = asyncio.create_task(sleep_job(3))
 
-- `sleep2` is also progressing
-- `sleep3` is also progressing
+await sleep2
+await sleep3
+await sleep_job(2)
+```
 
-At two seconds, `sleep2` is already complete.
-At three seconds, `sleep3` is complete.
+What is the total duration?
 
-**Answer: approximately 3 seconds.**
-
-The important distinction is not “which line appears first?”
-It is “which work has been scheduled already?”
+- A: about 2 seconds
+- B: about 3 seconds
+- C: about 5 seconds
 
 ---
 
 # `gather` result order
+
+- It automatically turns coroutines into tasks
 
 ```python
 results = await asyncio.gather(
@@ -313,10 +285,10 @@ The loop runs one task at a time until that task:
 
 ---
 
-# CPU work inside asyncio
+# CPU work inside asyncio - version I
 
 ```python
-async def cpu_job(n):
+async def cpu_job(n): # takes ca. 2 secs for 10**8
     total = 0
     for i in range(n):
         total += i
@@ -327,11 +299,33 @@ task_b = asyncio.create_task(cpu_job(10**8))
 task_sleep = asyncio.create_task(asyncio.sleep(2))
 ```
 
-Does the sleep run while the CPU jobs execute?
+Does the sleep run while the CPU jobs execute? Duration?
 
-- A: yes, tasks always share the time
-- B: no, the CPU coroutine never yields
-- C: only if `gather` is used
+- A: 2 seconds
+- B: 4 seconds
+- C: 6 seconds
+
+---
+
+# CPU work inside asyncio - version II
+
+```python
+async def cpu_job(n):
+    total = 0
+    for i in range(n):
+        total += i
+    return total
+
+task_sleep = asyncio.create_task(asyncio.sleep(2))
+task_a = asyncio.create_task(cpu_job(10**8))
+task_b = asyncio.create_task(cpu_job(10**8))
+```
+
+Does the sleep run while the CPU jobs execute? Duration?
+
+- A: 2 seconds
+- B: 4 seconds
+- C: 6 seconds
 
 ---
 
@@ -456,20 +450,40 @@ Use a queue, worker pool, or semaphore when resources are limited.
 
 ---
 
-# Free-threaded Python
+# Free-threaded Python: what changed?
+
+Python 3.13 introduced the optional free-threaded build.
+
+In Python 3.14, it became **officially supported**—but remains optional, not the
+default build.
+
+Which statement is accurate?
+
+- A: every Python 3.14 installation runs without the GIL
+- B: free-threading is supported, but you must install/use that build
+- C: it is still experimental in Python 3.14
+
+---
+
+# Is the GIL actually off?
+
+A free-threaded-capable build does not guarantee the GIL stays disabled.
+Importing an extension that is not marked as free-threading-compatible can
+automatically enable it.
+
+Check the **runtime state**, especially after importing your dependencies:
 
 ```python
-await asyncio.gather(
-    asyncio.to_thread(cpu_work, 50_000_000),
-    asyncio.to_thread(cpu_work, 50_000_000),
-)
+import sys
+
+print("GIL enabled:", sys._is_gil_enabled())
 ```
 
-**When can this provide true Python-level CPU parallelism?**
+`False` means Python threads can execute Python code in parallel in this run.
 
-- A: in every Python installation
-- B: in a free-threaded build such as Python 3.13t
-- C: only when the function contains `await`
+Free-threaded Python is not automatically faster for every workload: Python
+3.14's single-thread overhead is roughly 5–10% versus the standard build,
+depending on platform and compiler. Benchmark the real workload and its memory use.
 
 ---
 
@@ -481,10 +495,50 @@ threads:    execute synchronous work
 no-GIL:     allow Python threads to execute in parallel
 ```
 
-Free-threaded Python changes the CPU-bound case, but it also exposes real
-shared-memory races. Locks, queues, and ownership still matter.
+Free-threaded Python changes the CPU-bound case. Built-in containers protect
+many individual operations internally, but compound operations on shared state
+are not automatically atomic. Locks, queues, and ownership still matter.
+
+Python 3.14 also supports multiple event loops running in separate threads on
+free-threaded builds; each loop still schedules its own coroutines cooperatively.
 
 Run: [`ft_job.py`](../../examples/async_demo/ft_job.py)
+
+---
+
+# Another CPU-parallel option: interpreters
+
+Python 3.14 added `concurrent.futures.InterpreterPoolExecutor`.
+
+Each worker runs in a separate interpreter with its **own GIL**, so CPU-bound
+Python work can run on multiple cores—even with a standard GIL-enabled build.
+
+How does it avoid threads sharing mutable Python objects?
+
+- A: shared objects are protected by one global lock
+- B: each interpreter is isolated; inputs and results are serialized
+- C: it runs each job in a separate process
+
+---
+
+# Interpreter workers: isolation is the tradeoff
+
+```python
+from concurrent.futures import InterpreterPoolExecutor
+
+def cpu_work(n):
+    return sum(i * i for i in range(n))
+
+with InterpreterPoolExecutor(max_workers=4) as pool:
+    results = list(pool.map(cpu_work, [2_000_000] * 4))
+```
+
+- **Threads:** shared memory; need a free-threaded build for Python CPU parallelism
+- **Interpreters:** separate interpreter state; communicate through serialized inputs/results
+- **Processes:** separate processes; also communicate through serialized data
+
+Use importable, picklable callables and arguments. Interpreter startup,
+serialization, and extension compatibility still affect whether this is a win.
 
 ---
 
@@ -554,26 +608,21 @@ It is “where does this program spend its time?”
 
 ---
 
-# The three rules to take home
+# Rules to take home
 
 1. **`async` does not mean parallel.**
 2. **`await` creates a chance for other work to run.**
 3. **CPU work needs a parallel execution mechanism.**
 
-And the recurring idea:
-
 > When this job is waiting, who should use the time?
 
 ---
 
-# One last vote
+# Closing perspective
 
-Complete the sentence:
+The execution model should follow the workload:
 
-> I would use `asyncio` when ...
-
-> I would use threads or processes when ...
-
-> I would combine them when ...
-
-Then run one of the examples again and predict its duration before pressing Enter.
+- overlap waiting with `asyncio`
+- move blocking work to workers
+- use parallel execution for CPU-bound work
+- combine these models when an application has mixed workloads
