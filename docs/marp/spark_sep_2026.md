@@ -40,9 +40,9 @@ execution models:
 In synchronous programs:
 
 ```python
-load_data()   # waits
-compute()     # waits
-save_data()   # waits
+load_data()  # waits
+compute()  # waits
+save_data()  # waits
 ```
 
 Every step **owns the thread** until it returns.
@@ -87,16 +87,16 @@ In CPU-Bound program spends most time **computing**:
 In the standard CPython build, the Global Interpreter Lock allows only one
 thread at a time to execute Python bytecode in an interpreter.
 
-    Will two Python threads make this faster?
-    ```python
-    def work():
-        total = 0
-        for _ in range(10**8):
-            total += 1
-    ```
-    - A: yes
-    - B: no
-    - C: only if the function is declared `async`
+Will two Python threads make this faster?
+```python
+def work():
+    total = 0
+    for _ in range(10**8):
+        total += 1
+```
+- A: yes
+- B: no
+- C: only if the function is declared `async`
 
 
 
@@ -129,6 +129,7 @@ The GIL is also released around many blocking **I/O operations**.
 ```python
 async def greet():
     print("hello")
+
 
 greet()
 print("finished")
@@ -163,6 +164,7 @@ task = asyncio.create_task(greet())
 ```python
 async def sleep_job(seconds):
     await asyncio.sleep(seconds)
+
 
 task_a = asyncio.create_task(sleep_job(2))
 task_b = asyncio.create_task(sleep_job(3))
@@ -288,11 +290,12 @@ The loop runs one task at a time until that task:
 # CPU work inside asyncio - version I
 
 ```python
-async def cpu_job(n): # takes ca. 2 secs for 10**8
+async def cpu_job(n):  # takes ca. 2 secs for 10**8
     total = 0
     for i in range(n):
         total += i
     return total
+
 
 task_a = asyncio.create_task(cpu_job(10**8))
 task_b = asyncio.create_task(cpu_job(10**8))
@@ -315,6 +318,7 @@ async def cpu_job(n):
     for i in range(n):
         total += i
     return total
+
 
 task_sleep = asyncio.create_task(asyncio.sleep(2))
 task_a = asyncio.create_task(cpu_job(10**8))
@@ -352,6 +356,7 @@ Run: [`io_cpu_bound.py`](../../examples/async_demo/io_cpu_bound.py)
 async def read_file(path):
     with open(path, "rb") as file:
         return file.read()
+
 
 await asyncio.gather(
     read_file("file1"),
@@ -419,10 +424,7 @@ The workers perform work that should not occupy the loop.
 # One hundred workers
 
 ```python
-tasks = [
-    asyncio.to_thread(cpu_work, 50_000_000)
-    for _ in range(100)
-]
+tasks = [asyncio.to_thread(cpu_work, 50_000_000) for _ in range(100)]
 await asyncio.gather(*tasks)
 ```
 
@@ -438,6 +440,7 @@ Is this automatically a good design?
 
 ```python
 sem = asyncio.Semaphore(8)
+
 
 async def worker():
     async with sem:
@@ -526,8 +529,10 @@ How does it avoid threads sharing mutable Python objects?
 ```python
 from concurrent.futures import InterpreterPoolExecutor
 
+
 def cpu_work(n):
     return sum(i * i for i in range(n))
+
 
 with InterpreterPoolExecutor(max_workers=4) as pool:
     results = list(pool.map(cpu_work, [2_000_000] * 4))
