@@ -121,9 +121,9 @@ def run_func_async(func):
 
 
 if __name__ == "__main__":
-    run_func_async(main_CPU_bound)
+    # run_func_async(main_CPU_bound)
     # run_func_async(main_disk_read)
-    # run_func_async(main_disk_read_to_thread)
+    run_func_async(main_disk_read_to_thread)
     # run_func_async(main_disk_read_run_in_executor)
     # run_func_async(main_disk_read_with_aiofiles)
     # run_func_async(main_loop_signal_handler)

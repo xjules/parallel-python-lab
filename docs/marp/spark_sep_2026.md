@@ -57,7 +57,7 @@ Which statement is correct?
 
 - A. Concurrency and parallelism mean the same thing
 - B. Concurrency is overlapping progress; parallelism is simultaneous execution
-- C. Parallelism works on only one CPU core
+- C. Concurrency requires at least two CPU cores
 
 ---
 
@@ -66,7 +66,7 @@ Which statement is correct?
 Which workload should benefit most from `concurrency`?
 
 - A: 10,000 HTTP requests
-- B: 10,000 image processing
+- B: 10,000 image processing operations
 
 ---
 
@@ -84,8 +84,8 @@ In CPU-Bound program spends most time **computing**:
 
 # GIL in standard CPython
 
-In the standard CPython build, the Global Interpreter Lock allows only one
-thread at a time to execute Python bytecode in an interpreter.
+The Global Interpreter Lock allows only one
+thread at a time to execute Python bytecode in an interpreter
 
 Will two Python threads make this faster?
 ```python
@@ -106,10 +106,9 @@ def work():
 
 GIL exists primarily because of how **CPython manages memory**
 
-**Reference counting** tracks how many references an object has; when the count
-reaches zero, the object can be deallocated. The GIL historically made this
-bookkeeping simpler by preventing simultaneous bytecode execution in an
-interpreter.
+- **Reference counting** tracks how many references an object has
+-  when the count reaches zero, the object can be deallocated 
+- The GIL historically made this bookkeeping simpler by preventing simultaneous bytecode execution
 
 ---
 
@@ -118,7 +117,7 @@ interpreter.
 For CPU-bound Python code, the GIL remains locked
 - This makes standard multithreading ineffective for speeding up CPU-bound tasks
 
-The GIL is also released around many blocking **I/O operations**.
+The GIL is released blocking **I/O operations**.
 
 - **Asyncio** to handle many I/O-bound tasks concurrently
 
@@ -129,7 +128,6 @@ The GIL is also released around many blocking **I/O operations**.
 ```python
 async def greet():
     print("hello")
-
 
 greet()
 print("finished")
@@ -255,35 +253,15 @@ What is printed?
 
 # Completion order is not result order
 
-`asyncio.gather` returns results in the same order as its inputs.
+`asyncio.gather` returns results in the same order as its inputs
 
 ```text
 completion: B, then A
 results:    A, then B
 ```
 
-This is useful when the input position identifies the job.
-It can be surprising when the application needs streaming results instead.
+- useful when the input position identifies the job
 
----
-
-# The event loop in one picture
-
-```text
-                 ready tasks
-                     |
-                     v
-     I/O events -> event loop -> resumed coroutines
-                     ^
-                     |
-                 await points
-```
-
-The loop runs one task at a time until that task:
-
-- finishes
-- reaches an `await`
-- raises an exception
 
 ---
 
@@ -343,10 +321,7 @@ CPU job B:                       [====================]
 sleep:                           waits in the queue
 ```
 
-Asyncio is excellent at **latency hiding for I/O**.
-It is not a CPU parallelism mechanism.
-
-Run: [`io_cpu_bound.py`](../../examples/async_demo/io_cpu_bound.py)
+Asyncio is excellent at **latency hiding for I/O**, but not for a CPU parallelism mechanism.
 
 ---
 
@@ -372,7 +347,7 @@ Does `asyncio.gather` make the reads non-blocking?
 
 ---
 
-# Syntax does not change the underlying operation
+# Injecting async does not solve it!
 
 This is still synchronous file I/O running on the event-loop thread.
 
@@ -421,7 +396,7 @@ The workers perform work that should not occupy the loop.
 
 ---
 
-# One hundred workers
+# Many workers
 
 ```python
 tasks = [asyncio.to_thread(cpu_work, 50_000_000) for _ in range(100)]
@@ -431,7 +406,7 @@ await asyncio.gather(*tasks)
 Is this automatically a good design?
 
 - A: yes, more tasks always means more speed
-- B: no, bound concurrency to protect CPU and memory
+- B: no, bound concurrency to protect CPU (and memory)
 - C: no, because `gather` cannot run threads
 
 ---
@@ -447,56 +422,41 @@ async def worker():
         return await asyncio.to_thread(cpu_work, 50_000_000)
 ```
 
-The number of tasks and the number of active workers are different decisions.
-
-Use a queue, worker pool, or semaphore when resources are limited.
+- Use a queue, worker pool, or semaphore when resources are limited.
 
 ---
 
-# Free-threaded Python: what changed?
+# Free-threaded Python
 
 Python 3.13 introduced the optional free-threaded build.
 
-In Python 3.14, it became **officially supported**—but remains optional, not the
-default build.
+In Python 3.14, it became **officially supported**
+- but remains optional, not the default build
 
-Which statement is accurate?
-
-- A: every Python 3.14 installation runs without the GIL
-- B: free-threading is supported, but you must install/use that build
-- C: it is still experimental in Python 3.14
 
 ---
 
-# Is the GIL actually off?
+# Is the GIL actually disabled?
 
-A free-threaded-capable build does not guarantee the GIL stays disabled.
-Importing an extension that is not marked as free-threading-compatible can
-automatically enable it.
-
-Check the **runtime state**, especially after importing your dependencies:
+Check the **runtime state** -- after importing your dependencies:
 
 ```python
 import sys
 
 print("GIL enabled:", sys._is_gil_enabled())
 ```
+- `False` means Python threads can execute Python code in parallel in this run.
 
-`False` means Python threads can execute Python code in parallel in this run.
-
-Free-threaded Python is not automatically faster for every workload: Python
-3.14's single-thread overhead is roughly 5–10% versus the standard build,
-depending on platform and compiler. Benchmark the real workload and its memory use.
+Note: Free-threaded Python is not automatically faster for every workload; ie. 5–10% overhead versus the standard build
 
 ---
 
-# Two layers, two jobs
+# Layered approach
 
-```text
-asyncio:    coordinate and communicate
-threads:    execute synchronous work
-no-GIL:     allow Python threads to execute in parallel
-```
+
+- asyncio:    coordinate and communicate
+- threads:    execute synchronous work
+- no-GIL:     allow Python threads to execute in parallel
 
 Free-threaded Python changes the CPU-bound case. Built-in containers protect
 many individual operations internally, but compound operations on shared state
@@ -507,123 +467,61 @@ free-threaded builds; each loop still schedules its own coroutines cooperatively
 
 Run: [`ft_job.py`](../../examples/async_demo/ft_job.py)
 
+
 ---
+# Asyncio + Free-Threaded
 
-# Another CPU-parallel option: interpreters
-
-Python 3.14 added `concurrent.futures.InterpreterPoolExecutor`.
-
-Each worker runs in a separate interpreter with its **own GIL**, so CPU-bound
-Python work can run on multiple cores—even with a standard GIL-enabled build.
-
-How does it avoid threads sharing mutable Python objects?
-
-- A: shared objects are protected by one global lock
-- B: each interpreter is isolated; inputs and results are serialized
-- C: it runs each job in a separate process
+`asyncio` runs an **event loop** that is typically **single-threaded**
+- Free-threaded Python does **not** make coroutines parallel
+- `await` still means: _"pause me, run something else"_
+- `asyncio` offloads work to **threads**, which can execute in parallel
+- **one loop** = one thread that drives coroutine execution
 
 ---
 
-# Interpreter workers: isolation is the tradeoff
+# Async with CPU bound work
 
 ```python
-from concurrent.futures import InterpreterPoolExecutor
-
-
 def cpu_work(n):
-    return sum(i * i for i in range(n))
-
-
-with InterpreterPoolExecutor(max_workers=4) as pool:
-    results = list(pool.map(cpu_work, [2_000_000] * 4))
-```
-
-- **Threads:** shared memory; need a free-threaded build for Python CPU parallelism
-- **Interpreters:** separate interpreter state; communicate through serialized inputs/results
-- **Processes:** separate processes; also communicate through serialized data
-
-Use importable, picklable callables and arguments. Interpreter startup,
-serialization, and extension compatibility still affect whether this is a win.
-
----
-
-# How does a thread report back?
-
-```python
-def worker(loop, queue):
-    result = cpu_work()
-    loop.call_soon_threadsafe(queue.put_nowait, result)
-```
-
-Why not call `queue.put_nowait` directly?
-
-- A: the worker may be running outside the event-loop thread
-- B: queues can only contain strings
-- C: `call_soon_threadsafe` makes CPU work faster
-
----
-
-# Communicate across the boundary
-
-Use thread-safe scheduling to send a message back to the loop:
-
-```python
-loop.call_soon_threadsafe(queue.put_nowait, message)
-```
-
-The preferred shape is often:
-
-```text
-worker owns computation
-queue carries messages
-event loop owns async coordination
+    s = 0
+    for i in range(n):
+        s += i
+    return s
+async def main():
+    results = await asyncio.gather(
+        asyncio.to_thread(cpu_work, 50_000_000),
+        asyncio.to_thread(cpu_work, 50_000_000),
+        asyncio.to_thread(cpu_work, 50_000_000),
+        asyncio.to_thread(cpu_work, 50_000_000),
+    )
+    print(sum(results))
 ```
 
 ---
 
-# Choose the model
+# Other options for CPU parallelism
 
-For each workload, choose one:
+- **Free-threaded threads:** shared memory; Python threads can run CPU code in
+    parallel when the GIL is disabled.
+- **InterpreterPoolExecutor (Python 3.14+):** each worker has an isolated
+    interpreter and its own GIL; inputs and results are serialized.
+- **ProcessPoolExecutor:** separate processes; broad compatibility, with
+    process startup and serialization costs.
 
-1. `asyncio`
-2. threads or processes
-3. async plus workers
-
-**A.** 10,000 slow HTTP requests
-
-**B.** A pure-Python numerical calculation on a free-threaded build
-
-**C.** A service that downloads data and then performs heavy calculations
+Choose based on compatibility, data-sharing needs, and measured performance.
+For mixed workloads, let `asyncio` coordinate I/O and send CPU work to a bounded
+worker pool.
 
 ---
 
-# The decision table
+# Match the tool to the workload
 
-| Workload | First tool to consider |
+| Workload | Start with |
 |---|---|
 | Many I/O waits | `asyncio` |
-| Blocking library | `asyncio.to_thread` or a worker pool |
-| Pure-Python CPU work | processes, or free-threaded threads |
-| Mixed I/O and CPU | async orchestration plus workers |
-| Shared state | queues, ownership, and explicit synchronization |
+| Blocking library call | `asyncio.to_thread` |
+| Pure-Python CPU work | free-threaded threads, interpreters, or processes |
+| I/O followed by CPU work | `asyncio` plus bounded workers |
 
----
-
-# Rules to take home
-
-1. **`async` does not mean parallel.**
-2. **`await` creates a chance for other work to run.**
-3. **CPU work needs a parallel execution mechanism.**
-
-> When this job is waiting, who should use the time?
-
----
-
-# Closing perspective
-
-The execution model should follow the workload:
-
-- overlap waiting with `asyncio`
-- move blocking work to workers
-- use parallel execution for CPU-bound work
-- combine these models when an application has mixed workloads
+**Takeaway:** `async` enables concurrency; CPU parallelism needs workers that
+can execute in parallel. Keep shared state explicit and synchronize access.
