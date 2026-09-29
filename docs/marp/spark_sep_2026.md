@@ -347,30 +347,6 @@ Does `asyncio.gather` make the reads non-blocking?
 
 ---
 
-# Free-threaded Python
-
-Python 3.13 introduced the optional free-threaded build.
-
-In Python 3.14, it became **officially supported**
-- but remains optional, not the default build
-
----
-
-# Is the GIL actually disabled?
-
-Check the **runtime state** -- after importing your dependencies:
-
-```python
-import sys
-
-print("GIL enabled:", sys._is_gil_enabled())
-```
-- `False` means Python threads can execute Python code in parallel in this run.
-
-Note: Free-threaded Python is not automatically faster for every workload; ie. 5–10% overhead versus the standard build
-
----
-
 # Injecting async does not solve it!
 
 This is still synchronous file I/O running on the event-loop thread.
@@ -402,40 +378,62 @@ Which statement is best?
 
 ---
 
-# The hybrid architecture
+# A worker thread doesn't guarantee CPU parallelism
 
-```text
-asyncio event loop
-       |
-       | schedules and coordinates
-       v
-threads / processes
-       |
-       v
-blocking or CPU-heavy work
-```
+- `asyncio.to_thread()` moves blocking work off the event-loop thread
+  - the loop can keep running while the worker waits
 
-The event loop is the coordinator.
-The workers perform work that should not occupy the loop.
+- GIL allows only one thread at a time to execute Python bytecode
+  - helps with blocking I/O, but usually does not speed up pure-Python CPU work.
+
+**What if the GIL is disabled?** 
 
 ---
 
-# Many workers
+# Free-threaded Python
+
+Python 3.13 introduced the optional free-threaded build.
+
+In Python 3.14, it became **officially supported**
+- but remains optional, not the default build
+
+---
+
+# Is the GIL actually disabled?
+
+Check the **runtime state** -- after importing your dependencies:
+
+```python
+import sys
+
+print("GIL enabled:", sys._is_gil_enabled())
+```
+- `False` means Python threads can execute Python code in parallel in this run.
+
+Free-threaded Python is not automatically faster for every workload; expect
+some single-thread overhead and benchmark the real workload.
+
+---
+
+# Parallelism still needs limits
+
+With the GIL disabled, CPU-bound threads can run in parallel
+- CPU cores and memory are still limited
 
 ```python
 tasks = [asyncio.to_thread(cpu_work, 50_000_000) for _ in range(100)]
 await asyncio.gather(*tasks)
 ```
 
-Is this automatically a good design?
+What should we control?
 
-- A: yes, more tasks always means more speed
-- B: no, bound concurrency to protect CPU (and memory)
-- C: no, because `gather` cannot run threads
+- A: only the total number of tasks
+- B: the number of jobs active at once, to protect CPU and memory
+- C: nothing; the GIL is disabled
 
 ---
 
-# Bounded concurrency
+# Bound active work
 
 ```python
 sem = asyncio.Semaphore(8)
@@ -516,6 +514,3 @@ worker pool.
 | Blocking library call | `asyncio.to_thread` |
 | Pure-Python CPU work | free-threaded threads, interpreters, or processes |
 | I/O followed by CPU work | `asyncio` plus bounded workers |
-
-**Takeaway:** `async` enables concurrency; CPU parallelism needs workers that
-can execute in parallel. Keep shared state explicit and synchronize access.

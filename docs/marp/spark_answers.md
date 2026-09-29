@@ -61,6 +61,8 @@ def work():
 
 **Correct: B.** `asyncio.to_thread()` runs a blocking synchronous function in a worker thread, keeping that work from freezing the event loop. It does not automatically make pure-Python CPU work parallel on a standard GIL-enabled build.
 
+The companion [spark.py](../../examples/async_demo/spark.py) demo sums `range(10**8)` twice, first sequentially and then using two `asyncio.to_thread()` calls. Uncomment `main_to_thread_sum` in its `__main__` block, then run it once in a standard GIL-enabled environment and once in a free-threaded environment. The standard build should not gain CPU parallelism from the threads; with the GIL disabled, the jobs may execute in parallel and finish sooner. Compare the printed GIL state and timings rather than expecting a fixed speedup: results depend on available cores, Python build, and system load.
+
 ## One hundred workers
 
 **Correct: B.** Bound concurrency to avoid overwhelming CPU, memory, or downstream services. A semaphore, queue, or fixed-size worker pool can limit how many operations are active at once.
