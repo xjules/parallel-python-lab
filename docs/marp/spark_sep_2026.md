@@ -347,6 +347,30 @@ Does `asyncio.gather` make the reads non-blocking?
 
 ---
 
+# Free-threaded Python
+
+Python 3.13 introduced the optional free-threaded build.
+
+In Python 3.14, it became **officially supported**
+- but remains optional, not the default build
+
+---
+
+# Is the GIL actually disabled?
+
+Check the **runtime state** -- after importing your dependencies:
+
+```python
+import sys
+
+print("GIL enabled:", sys._is_gil_enabled())
+```
+- `False` means Python threads can execute Python code in parallel in this run.
+
+Note: Free-threaded Python is not automatically faster for every workload; ie. 5–10% overhead versus the standard build
+
+---
+
 # Injecting async does not solve it!
 
 This is still synchronous file I/O running on the event-loop thread.
@@ -426,31 +450,6 @@ async def worker():
 
 ---
 
-# Free-threaded Python
-
-Python 3.13 introduced the optional free-threaded build.
-
-In Python 3.14, it became **officially supported**
-- but remains optional, not the default build
-
-
----
-
-# Is the GIL actually disabled?
-
-Check the **runtime state** -- after importing your dependencies:
-
-```python
-import sys
-
-print("GIL enabled:", sys._is_gil_enabled())
-```
-- `False` means Python threads can execute Python code in parallel in this run.
-
-Note: Free-threaded Python is not automatically faster for every workload; ie. 5–10% overhead versus the standard build
-
----
-
 # Layered approach
 
 
@@ -458,14 +457,9 @@ Note: Free-threaded Python is not automatically faster for every workload; ie. 5
 - threads:    execute synchronous work
 - no-GIL:     allow Python threads to execute in parallel
 
-Free-threaded Python changes the CPU-bound case. Built-in containers protect
-many individual operations internally, but compound operations on shared state
-are not automatically atomic. Locks, queues, and ownership still matter.
+Parallel work still needs two things: protect shared resources, and use
+thread-safe signalling to coordinate between workers and the event loop.
 
-Python 3.14 also supports multiple event loops running in separate threads on
-free-threaded builds; each loop still schedules its own coroutines cooperatively.
-
-Run: [`ft_job.py`](../../examples/async_demo/ft_job.py)
 
 
 ---
