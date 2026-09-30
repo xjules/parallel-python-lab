@@ -242,17 +242,6 @@ results = await asyncio.gather(
 )
 print(results)
 ```
-
-What is printed?
-
-- A: `['A', 'B']`
-- B: `['B', 'A']`
-- C: whichever task finishes first, with no guarantee
-
----
-
-# Completion order is not result order
-
 `asyncio.gather` returns results in the same order as its inputs
 
 ```text
