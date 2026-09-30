@@ -75,13 +75,11 @@ Parallelism implies concurrency, but concurrency does not always imply paralleli
 
 # I/O-Bound vs CPU-bound Workloads
 
-In I/O Bound program spends most time **waiting** for external systems:
-- These workloads benefit from **concurrency**
-- **asyncio**, threading - **GIL**
+In I/O-bound programs, most time is spent **waiting** for external systems:
+- Use **asyncio** or threads to overlap waits; the GIL does not prevent this.
 
-In CPU-Bound program spends most time **computing**:
-- These workloads benefit from **parallelism**
-- multiprocessing or **free-threaded Python**
+In CPU-bound programs, most time is spent **computing**:
+- Use processes or **free-threaded Python** for parallel execution.
 
 ---
 
