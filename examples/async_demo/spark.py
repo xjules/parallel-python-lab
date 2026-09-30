@@ -160,16 +160,6 @@ async def file_io_demo(method: str, size_mb: int) -> None:
         print(f"Elapsed: {time.perf_counter() - start:.2f}s ({method} file reads)")
 
 
-async def cpu_threads_demo(iterations: int, jobs: int) -> None:
-    """Show that to_thread prevents loop blocking, not GIL-bound CPU serialization."""
-    start = time.perf_counter()
-    results = await asyncio.gather(
-        *(asyncio.to_thread(cpu_work, iterations) for _ in range(jobs))
-    )
-    print(f"Completed {len(results)} CPU jobs in {time.perf_counter() - start:.2f}s")
-    print("On a GIL-enabled build, to_thread is not CPU parallelism for pure Python.")
-
-
 async def to_thread_sum_demo() -> None:
     """Compare two pure-Python sums in sequence and with asyncio.to_thread()."""
     iterations = 10**8
@@ -266,101 +256,32 @@ async def thread_message_demo(iterations: int) -> None:
     print(f"Worker result: {result:,}")
 
 
-def choose_model_demo() -> None:
-    print("10,000 slow HTTP requests: asyncio (many concurrent I/O waits)")
-    print("Pure-Python numerical work: processes or free-threaded threads")
-    print("Downloads followed by heavy calculations: async plus bounded workers")
-
-
-def main_blocking() -> None:
-    blocking_demo(DELAY)
-
-
-def main_interpreters() -> None:
-    interpreter_demo(ITERATIONS, WORKERS)
-
-
-async def main_coroutine() -> None:
-    await coroutine_demo()
-
-
-async def main_sleep() -> None:
-    await sleep_demo(DELAY)
-
-
-async def main_mixed_i() -> None:
-    await mixed_await_demo(DELAY, direct_first=True)
-
-
-async def main_mixed_ii() -> None:
-    await mixed_await_demo(DELAY, direct_first=False)
-
-
-async def main_gather_order() -> None:
-    await gather_order_demo(DELAY)
-
-
-async def main_cpu_async_v1() -> None:
-    await cpu_async_demo(ITERATIONS, DELAY, sleep_first=False)
-
-
-async def main_cpu_async_v2() -> None:
-    await cpu_async_demo(ITERATIONS, DELAY, sleep_first=True)
-
-
-async def main_file_io_sync() -> None:
-    await file_io_demo("sync", FILE_SIZE_MB)
-
-
-async def main_file_io_thread() -> None:
-    await file_io_demo("thread", FILE_SIZE_MB)
-
-
-async def main_cpu_threads() -> None:
-    await cpu_threads_demo(ITERATIONS, JOBS)
-
-
-async def main_to_thread_sum() -> None:
-    await to_thread_sum_demo()
-
-
-async def main_bounded() -> None:
-    await bounded_demo(ITERATIONS, JOBS * 4, WORKERS)
-
-
-async def main_thread_message() -> None:
-    await thread_message_demo(ITERATIONS)
-
-
-def run_func_async(func: Callable[[], Any]) -> None:
+def run_func_async(func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
     """Run either a synchronous demo or an async demo and report its duration."""
     name = getattr(func, "__name__", str(func))
     print(f"Running {name}...")
     start = time.perf_counter()
     if inspect.iscoroutinefunction(func):
-        asyncio.run(func())
+        asyncio.run(func(*args, **kwargs))
     else:
-        func()
+        func(*args, **kwargs)
     print(f"Execution time: {time.perf_counter() - start:.2f} seconds")
 
 
 if __name__ == "__main__":
     # Uncomment the demos to run. Run one at a time for comparable timings.
-    # run_func_async(main_blocking)
-    # run_func_async(main_coroutine)
-    # run_func_async(main_sleep)
-    # run_func_async(main_mixed_i)
-    # run_func_async(main_mixed_ii)
-    # run_func_async(main_gather_order)
-    # run_func_async(main_cpu_async_v1)
-    # run_func_async(main_cpu_async_v2)
-    # run_func_async(main_file_io_sync)
-    # run_func_async(main_file_io_thread)
-    # run_func_async(main_cpu_threads)
-    # run_func_async(main_to_thread_sum)  # compare in GIL and free-threaded envs
-    # run_func_async(main_bounded)
+    # run_func_async(blocking_demo, DELAY)
+    # run_func_async(coroutine_demo)
+    run_func_async(sleep_demo, DELAY)
+    # run_func_async(mixed_await_demo, DELAY, direct_first=True)
+    # run_func_async(mixed_await_demo, DELAY, direct_first=False)
+    # run_func_async(gather_order_demo, DELAY)
+    # run_func_async(cpu_async_demo, ITERATIONS, DELAY, sleep_first=False)
+    # run_func_async(cpu_async_demo, ITERATIONS, DELAY, sleep_first=True)
+    # run_func_async(file_io_demo, "sync", FILE_SIZE_MB)
+    # run_func_async(file_io_demo, "thread", FILE_SIZE_MB)
+    # run_func_async(to_thread_sum_demo)  # compare GIL and free-threaded envs
+    # run_func_async(bounded_demo, ITERATIONS, JOBS * 4, WORKERS)
     # run_func_async(gil_status_demo)
-    # run_func_async(main_interpreters)
-    # run_func_async(main_thread_message)
-    # run_func_async(choose_model_demo)
-    run_func_async(main_sleep)
+    # run_func_async(interpreter_demo, ITERATIONS, WORKERS)
+    # run_func_async(thread_message_demo, ITERATIONS)
