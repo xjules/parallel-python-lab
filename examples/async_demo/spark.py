@@ -7,7 +7,6 @@ similar to io_cpu_bound.py. Adjust the constants below to change run sizes.
 from __future__ import annotations
 
 import asyncio
-import concurrent.futures
 import inspect
 import sys
 import tempfile
@@ -161,28 +160,21 @@ async def file_io_demo(method: str, size_mb: int) -> None:
 
 
 async def to_thread_sum_demo() -> None:
-    """Compare two pure-Python sums in sequence and with asyncio.to_thread()."""
+    """Run two pure-Python sums concurrently through asyncio.to_thread()."""
     iterations = 10**8
     gil_check = getattr(sys, "_is_gil_enabled", None)
     gil_enabled = gil_check() if gil_check is not None else "unknown"
     print(f"Python: {sys.version.split()[0]}; GIL enabled: {gil_enabled}")
-    print(f"Summing range({iterations:,}) twice")
+    print(f"Running two to_thread sums of range({iterations:,})")
 
     start = time.perf_counter()
-    sequential_results = [cpu_work(iterations), cpu_work(iterations)]
-    sequential_elapsed = time.perf_counter() - start
-
-    start = time.perf_counter()
-    threaded_results = await asyncio.gather(
+    _ = await asyncio.gather(
         asyncio.to_thread(cpu_work, iterations),
         asyncio.to_thread(cpu_work, iterations),
     )
-    threaded_elapsed = time.perf_counter() - start
+    elapsed = time.perf_counter() - start
 
-    assert threaded_results == sequential_results
-    print(f"Sequential: {sequential_elapsed:.2f}s")
-    print(f"Two to_thread jobs: {threaded_elapsed:.2f}s")
-    print(f"Observed speedup: {sequential_elapsed / threaded_elapsed:.2f}x")
+    print(f"Elapsed: {elapsed:.2f}s")
 
 
 async def bounded_demo(iterations: int, jobs: int, workers: int) -> None:
@@ -211,30 +203,6 @@ async def bounded_demo(iterations: int, jobs: int, workers: int) -> None:
     results = await asyncio.gather(*(bounded_job() for _ in range(jobs)))
     print(f"Completed {len(results)} jobs; max active workers: {maximum_active}")
     print(f"Elapsed: {time.perf_counter() - start:.2f}s")
-
-
-def gil_status_demo() -> None:
-    is_gil_enabled = getattr(sys, "_is_gil_enabled", None)
-    if is_gil_enabled is None:
-        print("This Python build does not expose sys._is_gil_enabled().")
-        print(f"Python: {sys.version.split()[0]}; executable: {sys.executable}")
-        return
-    print(f"GIL enabled: {is_gil_enabled()}")
-    print("Check this after importing dependencies; an extension may enable the GIL.")
-
-
-def interpreter_demo(iterations: int, workers: int) -> None:
-    """Run CPU jobs in isolated interpreters when this Python provides the API."""
-    interpreter_pool = getattr(concurrent.futures, "InterpreterPoolExecutor", None)
-    if interpreter_pool is None:
-        print("InterpreterPoolExecutor requires Python 3.14 or newer.")
-        return
-    with interpreter_pool(max_workers=workers) as pool:
-        results = list(pool.map(cpu_work, [iterations] * workers))
-    print(f"{len(results)} interpreter workers returned {results[0]:,} each.")
-    print(
-        "Workers have isolated interpreter state; arguments and results are serialized."
-    )
 
 
 async def thread_message_demo(iterations: int) -> None:
@@ -272,7 +240,7 @@ if __name__ == "__main__":
     # Uncomment the demos to run. Run one at a time for comparable timings.
     # run_func_async(blocking_demo, DELAY)
     # run_func_async(coroutine_demo)
-    run_func_async(sleep_demo, DELAY)
+    # run_func_async(sleep_demo, DELAY)
     # run_func_async(mixed_await_demo, DELAY, direct_first=True)
     # run_func_async(mixed_await_demo, DELAY, direct_first=False)
     # run_func_async(gather_order_demo, DELAY)
@@ -280,8 +248,6 @@ if __name__ == "__main__":
     # run_func_async(cpu_async_demo, ITERATIONS, DELAY, sleep_first=True)
     # run_func_async(file_io_demo, "sync", FILE_SIZE_MB)
     # run_func_async(file_io_demo, "thread", FILE_SIZE_MB)
-    # run_func_async(to_thread_sum_demo)  # compare GIL and free-threaded envs
+    run_func_async(to_thread_sum_demo)  # compare GIL and free-threaded envs
     # run_func_async(bounded_demo, ITERATIONS, JOBS * 4, WORKERS)
-    # run_func_async(gil_status_demo)
-    # run_func_async(interpreter_demo, ITERATIONS, WORKERS)
     # run_func_async(thread_message_demo, ITERATIONS)
