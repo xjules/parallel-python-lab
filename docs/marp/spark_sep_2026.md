@@ -51,22 +51,25 @@ This model is simple, but inefficient for many workloads.
 
 ---
 
-# Concurrency or parallelism?
+# Concurrency
 
-Which statement is correct?
+Allowing more than one task to be handled at the same time
+- broader term than parallelism, ie. multiple tasks have the ability to run in an **overlapping manner**
+- we **switch** between tasks
+    - baker starts a second cake while the first is in owen
 
-- A. Concurrency and parallelism mean the same thing
-- B. Concurrency is overlapping progress; parallelism is simultaneous execution
-- C. Concurrency requires at least two CPU cores
+Concurrency is about **managing** many things at once, but **not necessarily doing** them at the exact same instant.
 
 ---
 
-# Understanding the Bottlenecks
+# Parallelism
 
-Which workload should benefit most from `concurrency`?
+Executing multiple operations at the **exact same time**
+- Concurrency can happen on a single-core CPU via "time slicing," 
+- Parallelism **requires a CPU / GPU with multiple cores or multiple machines**.
+    - Two distinct bakers working on two different cakes simultaneously
 
-- A: 10,000 HTTP requests
-- B: 10,000 image processing operations
+Parallelism implies concurrency, but concurrency does not always imply parallelism
 
 ---
 
@@ -86,65 +89,23 @@ In CPU-Bound program spends most time **computing**:
 
 The Global Interpreter Lock allows only one
 thread at a time to execute Python bytecode in an interpreter
-
-Will two Python threads make this faster?
-```python
-def work():
-    total = 0
-    for _ in range(10**8):
-        total += 1
-```
-- A: yes
-- B: no
-- C: only if the function is declared `async`
-
-
-
----
-
-# GIL in standard CPython - why?
-
-GIL exists primarily because of how **CPython manages memory**
-
-- **Reference counting** tracks how many references an object has
--  when the count reaches zero, the object can be deallocated 
-- The GIL historically made this bookkeeping simpler by preventing simultaneous bytecode execution
-
----
-
-# GIL in standard CPython - when?
-
-For CPU-bound Python code, the GIL remains locked
 - This makes standard multithreading ineffective for speeding up CPU-bound tasks
 
-The GIL is released blocking **I/O operations**.
-
+GIL exists primarily because of memory management
+- For CPU-bound Python code, the GIL remains locked
+- GIL is released during **I/O operations**
 - **Asyncio** to handle many I/O-bound tasks concurrently
 
 ---
 
-# Asyncio: built-in library to write concurrent code
+# Asyncio: to write concurrent code
+
+Coroutines
 
 ```python
 async def greet():
     print("hello")
 
-greet()
-print("finished")
-```
-
-What is printed?
-- A: `hello`, then `finished`
-- B: `finished`, and possibly a warning
-- C: nothing
-
----
-
-# Coroutines
-
-`async def` creates a coroutine - It runs only when it is awaited or scheduled as a task.
-
-```python
 await greet()
 # or
 task = asyncio.create_task(greet())
@@ -171,11 +132,7 @@ await task_a
 await task_b
 ```
 
-How long?
-
-- A: 2 seconds
-- B: 3 seconds
-- C: 5 seconds
+What is the total duration?
 
 ---
 
@@ -193,7 +150,7 @@ task B:     [===============]
 
 ---
 
-# Mixed awaits - I.
+# Mixed awaits
 
 ```python
 sleep2 = asyncio.create_task(sleep_job(2))
@@ -203,16 +160,6 @@ await sleep_job(2)
 await sleep2
 await sleep3
 ```
-
-What is the total duration?
-
-- A: about 2 seconds
-- B: about 3 seconds
-- C: about 5 seconds
-
----
-
-# Mixed awaits - II.
 
 ```python
 sleep2 = asyncio.create_task(sleep_job(2))
@@ -224,10 +171,6 @@ await sleep_job(2)
 ```
 
 What is the total duration?
-
-- A: about 2 seconds
-- B: about 3 seconds
-- C: about 5 seconds
 
 ---
 
@@ -254,7 +197,7 @@ results:    A, then B
 
 ---
 
-# CPU work inside asyncio - version I
+# CPU work inside asyncio
 
 ```python
 async def cpu_job(n):  # takes ca. 2 secs for 10**8
@@ -269,58 +212,44 @@ task_b = asyncio.create_task(cpu_job(10**8))
 task_sleep = asyncio.create_task(asyncio.sleep(2))
 ```
 
-Does the sleep run while the CPU jobs execute? Duration?
-
-- A: 2 seconds
-- B: 4 seconds
-- C: 6 seconds
-
----
-
-# CPU work inside asyncio - version II
-
 ```python
-async def cpu_job(n):
-    total = 0
-    for i in range(n):
-        total += i
-    return total
-
 
 task_sleep = asyncio.create_task(asyncio.sleep(2))
 task_a = asyncio.create_task(cpu_job(10**8))
 task_b = asyncio.create_task(cpu_job(10**8))
 ```
 
-Does the sleep run while the CPU jobs execute? Duration?
-
-- A: 2 seconds
-- B: 4 seconds
-- C: 6 seconds
+Duration? 6secs (top) and 6secs (bottom)
 
 ---
 
-# Cooperative means cooperative
+# Scheduling
 
 `asyncio` cannot interrupt a coroutine that never yields.
 
 ```text
-CPU job A: [====================]
-CPU job B:                       [====================]
-sleep:                           waits in the queue
+Top: CPU tasks scheduled first (~6 seconds total)
+CPU A: [0----2]
+CPU B:       [2----4]
+sleep:                  [4----6]
+
+Bottom: sleep task scheduled first (~4 seconds total)
+timer:  [0----2] expires
+CPU A:  [0----2]
+CPU B:        [2----4]
+resume:               sleep resumes at ~4
 ```
 
 Asyncio is excellent at **latency hiding for I/O**, but not for a CPU parallelism mechanism.
 
 ---
 
-# Is this file access async?
+# Is file access async?
 
 ```python
 async def read_file(path):
     with open(path, "rb") as file:
         return file.read()
-
 
 await asyncio.gather(
     read_file("file1"),
@@ -328,25 +257,13 @@ await asyncio.gather(
 )
 ```
 
-Does `asyncio.gather` make the reads non-blocking?
+ - This is still synchronous file I/O running on the event-loop thread.
 
-- A: yes, because the function is `async`
-- B: no, `read()` still blocks the event-loop thread
-- C: only if there are two files
-
----
-
-# Injecting async does not solve it!
-
-This is still synchronous file I/O running on the event-loop thread.
-
-Move the blocking function away from the loop:
+Move the blocking function away from the loop!
 
 ```python
 content = await asyncio.to_thread(read_file, path)
 ```
-
-Now the event loop can schedule other coroutines while the worker thread waits.
 
 ---
 
@@ -358,22 +275,11 @@ await asyncio.gather(
     asyncio.to_thread(read_file, "file2"),
 )
 ```
-
-Which statement is best?
-
-- A: It makes every Python calculation run in parallel
-- B: It keeps blocking work from freezing the event loop
-- C: It removes the need for synchronization
-
----
-
-# A worker thread doesn't guarantee CPU parallelism
-
 - `asyncio.to_thread()` moves blocking work off the event-loop thread
   - the loop can keep running while the worker waits
 
 - GIL allows only one thread at a time to execute Python bytecode
-  - helps with blocking I/O, but usually does not speed up pure-Python CPU work.
+  - helps with blocking I/O, but doesn't speed up CPU work.
 
 **What if the GIL is disabled?** 
 
@@ -386,21 +292,12 @@ Python 3.13 introduced the optional free-threaded build.
 In Python 3.14, it became **officially supported**
 - but remains optional, not the default build
 
----
-
-# Is the GIL actually disabled?
-
-Check the **runtime state** -- after importing your dependencies:
-
 ```python
 import sys
 
 print("GIL enabled:", sys._is_gil_enabled())
 ```
-- `False` means Python threads can execute Python code in parallel in this run.
-
-Free-threaded Python is not automatically faster for every workload; expect
-some single-thread overhead and benchmark the real workload.
+Free-threaded Python is not automatically faster for every workload
 
 ---
 
@@ -414,26 +311,15 @@ tasks = [asyncio.to_thread(cpu_work, 50_000_000) for _ in range(100)]
 await asyncio.gather(*tasks)
 ```
 
-What should we control?
-
-- A: only the total number of tasks
-- B: the number of jobs active at once, to protect CPU and memory
-- C: nothing; the GIL is disabled
-
----
-
-# Bound active work
+Bound active work!
 
 ```python
 sem = asyncio.Semaphore(8)
-
-
 async def worker():
     async with sem:
         return await asyncio.to_thread(cpu_work, 50_000_000)
 ```
-
-- Use a queue, worker pool, or semaphore when resources are limited.
+- Use queue, worker pool, or semaphore
 
 ---
 
@@ -444,8 +330,9 @@ async def worker():
 - threads:    execute synchronous work
 - no-GIL:     allow Python threads to execute in parallel
 
-Parallel work still needs two things: protect shared resources, and use
-thread-safe signalling to coordinate between workers and the event loop.
+Parallel work still needs 
+- protect shared resources
+- use thread-safe signalling to coordinate between workers and the event loop
 
 
 
@@ -488,10 +375,6 @@ async def main():
     interpreter and its own GIL; inputs and results are serialized.
 - **ProcessPoolExecutor:** separate processes; broad compatibility, with
     process startup and serialization costs.
-
-Choose based on compatibility, data-sharing needs, and measured performance.
-For mixed workloads, let `asyncio` coordinate I/O and send CPU work to a bounded
-worker pool.
 
 ---
 
